@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "=== AI PERSISTENT MEMORY SYSTEM ==="
+echo "This script sets up your personal AI assistant"
+echo ""
+echo "QUICK START:"
+echo "  mkdir -p ~/.ai-memory/{conversations,knowledge-base,profiles}"
+echo "  ai-init          # One-time setup"
+echo "  ai-with-memory   # Chat with AI"
+echo "  ai-progress      # See what AI learned"
+echo "  ai-remember      # AI reviews its memory"
+echo ""
