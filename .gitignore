@@ -1,0 +1,8 @@
+.ai-memory/
+*.jsonl
+*.db
+.env
+.DS_Store
+__pycache__/
+node_modules/
+.vscode/
