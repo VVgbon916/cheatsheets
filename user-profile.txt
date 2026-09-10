@@ -1,0 +1,19 @@
+=== DAWA'S AI USER PROFILE ===
+Name: Dawa
+Username: VVgbon
+Email: Robitaille916@gmail.com
+Rig Hostname: VVgBazz
+Operating System: Bazzite DX NVIDIA 44 (Fedora Atomic / KDE Wayland)
+CPU: Intel Core i7-6700 (4.00 GHz Boost, Liquid Cooled)
+GPU: NVIDIA GeForce RTX 3060 12GB GDDR6 (PNY GA104, 170W Cap, Driver 610.57, CUDA 13.3)
+RAM: 16 GB Physical DDR4 + 7.8 GB zram swap (swappiness 10)
+Storage: 1TB SATA SSD (Btrfs root & home)
+Audio Stack: PipeWire 1.6.8 with 4 Dedicated Sinks (game, music, voice, browser) + USB DAC (Zgmicro)
+Coding Style: Minimalist, terminal-first, code-first explanations, zero GUI clutter, Sublime Text
+Primary Languages: Bash, Python, Java 17/21
+Dev Environment: Distrobox container 'coding-lab' (host stays immutable)
+Favorite Model: qwen2.5-coder:7b (or avalhla)
+AI Companion Name: Avalhla (Ava)
+Repository: https://github.com/VVgbon916/cheatsheets
+Created: $(date)
+=== END PROFILE ===

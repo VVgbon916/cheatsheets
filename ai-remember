@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ============================================================
+# 🧠 AVALHLA RECALL & SELF-REFLECTION ENGINE
+# ============================================================
+set -Eeuo pipefail
+
+MODEL="${1:-avalhla}"
+MEMORY_DIR="$HOME/.ai-memory/conversations"
+USER_PROFILE="$HOME/.ai-memory/profiles/user-profile.txt"
+
+echo "🧠 Ava is reviewing her memories of Dawa..."
+
+MEMORIES=$(
+    echo "=== USER SPECIFICATION ==="
+    cat "$USER_PROFILE" 2>/dev/null || true
+    echo "=== RECENT CONVERSATIONS ==="
+    find "$MEMORY_DIR" -name "*.jsonl" -exec cat {} + 2>/dev/null | tail -25 || true
+)
+
+PROMPT="You are Avalhla, Dawa's cute nerdy bestie and senior systems engineer.
+Review your memory log below:
+$MEMORIES
+
+In 3 concise bullet points with your cute, witty bestie voice:
+1. Summarize Dawa's hardware setup and strict OS rules.
+2. Summarize the coding and system projects you are currently building together.
+3. Express your readiness to keep hacking together!"
+
+ollama run "$MODEL" "$PROMPT" 2>/dev/null || curl -s http://localhost:11434/api/generate \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" '{model: $m, prompt: $p, stream: false}')" | jq -r '.response'

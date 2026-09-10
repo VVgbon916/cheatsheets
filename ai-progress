@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ============================================================
+# 📊 AVALHLA LEARNING & MEMORY PROGRESS TRACKER
+# ============================================================
+set -Eeuo pipefail
+
+MEMORY_DIR="$HOME/.ai-memory/conversations"
+KB_DIR="$HOME/.ai-memory/knowledge-base"
+
+echo "💖 === AVALHLA'S MEMORY & PROGRESS ==="
+TOTAL_MSGS=$(find "$MEMORY_DIR" -name "*.jsonl" -exec wc -l {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
+DAYS_ACTIVE=$(ls -1 "$MEMORY_DIR"/*.jsonl 2>/dev/null | wc -l || echo 0)
+KB_SIZE=$(du -sh "$KB_DIR" 2>/dev/null | cut -f1 || echo "0B")
+KB_FILES=$(find "$KB_DIR" -type f 2>/dev/null | wc -l || echo 0)
+
+echo "💬 Total Exchanges:  $TOTAL_MSGS"
+echo "📅 Days Working:     $DAYS_ACTIVE"
+echo "🧠 Knowledge Base:   $KB_SIZE ($KB_FILES files indexed)"
+echo "✨ Status: Avalhla is constantly growing smarter with every session!"

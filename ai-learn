@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# ============================================================
+# 📚 AVALHLA KNOWLEDGE BASE INDEXER
+# ============================================================
+set -Eeuo pipefail
+
+KB_DIR="$HOME/.ai-memory/knowledge-base"
+PROJECT_PATH="${1:-.}"
+
+echo "🧠 Ava is indexing your code and documentation..."
+echo "Source: $PROJECT_PATH"
+
+cd "$PROJECT_PATH" 2>/dev/null || { echo "Invalid directory: $PROJECT_PATH"; exit 1; }
+mkdir -p "$KB_DIR"
+
+find . -type f \
+    \( -name "*.py" -o -name "*.sh" -o -name "*.md" -o -name "*.txt" -o -name "*.java" -o -name "*.conf" \) \
+    ! -path "./node_modules/*" \
+    ! -path "./.git/*" \
+    ! -path "./target/*" \
+    ! -path "./build/*" | while IFS= read -r file; do
+        dest="$KB_DIR/${file#./}"
+        mkdir -p "$(dirname "$dest")"
+        cp -u "$file" "$dest" 2>/dev/null || true
+    done
+
+TOTAL_FILES=$(find "$KB_DIR" -type f 2>/dev/null | wc -l || echo 0)
+echo "✅ Indexed $TOTAL_FILES files into Avalhla's persistent knowledge base!"
