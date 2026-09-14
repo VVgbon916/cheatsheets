@@ -1,0 +1,26 @@
+# --- Avalhla personal memory / logs (NEVER commit — this repo is public) ---
+.ai-memory/conversations/
+.ai-memory/knowledge-base/
+*.jsonl
+
+# --- Real personal profile (contains identity/hardware specifics) ---
+# Keep persona/user-profile.txt.example tracked as the template;
+# the real filled-in file stays local only.
+persona/user-profile.txt
+
+# --- KDE / Dolphin folder metadata (not project content) ---
+.directory
+
+# --- Local build / cache junk ---
+__pycache__/
+*.pyc
+.venv/
+*.log
+
+# --- Editor / OS cruft ---
+.vscode/
+.idea/
+.DS_Store
+# Java tarballs/extracted JDKs — never belong in this repo
+*.tar.gz
+jdk-*/

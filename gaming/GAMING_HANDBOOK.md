@@ -1,4 +1,4 @@
-# 🎮 VVgBazz — Bazzite Gaming Handbook
+# 🎮 VVgBazz — Gaming Handbook
 ### Dawa's Personal Rig | `VVgbon@VVgBazz` | i7-6700 · RTX 3060 12GB · Bazzite DX NVIDIA 44 · KDE Wayland
 > Last reviewed: 2026-09-10 | Driver: 610.57.04 | Kernel: 7.2.3-ogc3.1.fc44
 
@@ -294,8 +294,11 @@ The script tries `brew install cava` as the "recommended" method. As established
 # ✅ CORRECT — Install cava via distrobox (best, no reboot) //dawa
 distrobox enter devbox
 sudo dnf install -y cava
-# Then run cava from inside distrobox, or export it:
-distrobox-export --app cava
+
+# ⚠️ `distrobox-export --app cava` will fail with "cannot find any desktop
+#    files" — cava is a terminal app with no .desktop entry. Export it as a
+#    binary instead:
+distrobox-export --bin /usr/bin/cava
 
 # ✅ OR — Layer it with rpm-ostree (needs reboot, but accessible system-wide)
 rpm-ostree install cava
@@ -399,7 +402,7 @@ else
     if distrobox list 2>/dev/null | grep -q devbox; then
         info "Installing cava in devbox (no reboot needed)..."
         distrobox run --name devbox -- sudo dnf install -y cava
-        distrobox-export --app cava 2>/dev/null || true
+        distrobox-export --bin /usr/bin/cava 2>/dev/null || true
         ok "cava installed in devbox."
     else
         warn "devbox not set up. Falling back to rpm-ostree (REBOOT required)."
@@ -810,41 +813,26 @@ df -h /home
 
 ## 13. 🛠️ Maintenance, Topgrade & Debug Guide
 
-For full OS upgrades, Topgrade configuration, driver crash analysis, and disaster recovery / rollback steps, see the dedicated companion guide:
-👉 [VVgBazz_Maintenance_Update_Debug_Guide.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/VVgBazz_Maintenance_Update_Debug_Guide.md)
+For full OS upgrades, Topgrade configuration, driver crash analysis, and disaster recovery / rollback steps:
+👉 [`/system/MAINTENANCE_DEBUG_GUIDE.md`](../system/MAINTENANCE_DEBUG_GUIDE.md)
 
 ---
 
-## 14. 🧠 Free Local AI CLI Guide (RTX 3060 12GB + Distrobox)
+## 14. 🧠 Local AI Guide (RTX 3060 12GB + Distrobox)
 
-For running private, free, unlimited-token AI models (Qwen 2.5 Coder 7B/14B) on your GPU for Bash and Java 17/21 engineering without modifying the immutable host:
-👉 [VVgBazz_Local_AI_CLI_Guide.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/VVgBazz_Local_AI_CLI_Guide.md)
+For running private, free, unlimited-token AI models (Qwen 2.5 Coder 7B/14B) for Bash and Java 17/21 engineering without modifying the immutable host:
+👉 [`/ai/AI_GUIDE.md`](../ai/AI_GUIDE.md)
 
 ---
 
 ## 15. 📀 Bootable ISO Export & System Cloning Guide
 
-For capturing your exact desktop (all widgets, fonts, color schemes, Flatpaks, and settings) into a bootable USB ISO — for both 1:1 Personal Restoration (`UserSaved VVgbazz`) and a clean OEM Golden Master (`New User`):
-👉 [VVgBazz_ISO_Export_Cloning_Guide.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/VVgBazz_ISO_Export_Cloning_Guide.md)
+For capturing your exact desktop (widgets, fonts, color schemes, Flatpaks, settings) into a bootable USB ISO:
+👉 `/system/ISO_EXPORT_CLONING_GUIDE.md` (not yet migrated into this restructure — paste its contents if you want it merged too)
 
 ---
 
-## 16. 📦 Fresh Bazzite to Perfection Blueprint (Dependencies & Apps)
+## 16. 📦 Fresh Bazzite to Perfection Blueprint
 
-For rebuilding or provisioning a fresh Bazzite install from scratch up to the exact VVgBazz standard (layered RPMs, Flatpaks, PipeWire routing, Distrobox, Local AI, and KDE persona):
-👉 [DEPENDENCIES_APPS_NewUser_Guide.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/DEPENDENCIES_APPS_NewUser_Guide.md)
-
----
-
-## 17. 📻 Master Radio — Worldwide Music Database & Generator
-
-For the Top 5 Bazzite Radio Apps (Shortwave, Tuner, Strawberry, MusicPod, Goodvibes) and the automated Python engine that builds M3U/XSPF playlists, ASCII tree indexes, and Crossover directories according to the 27 core rules:
-👉 [MASTER_RADIO_GUIDE.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/MASTER_RADIO_GUIDE.md)  
-👉 Engine Script: [master_radio_builder.py](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/master_radio_builder.py)
-
----
-
-## 18. 🛡️ Avalhla — Personal AI CLI Training & Benchmark Suite
-
-For testing your local AI companion (Avalhla) on Ollama with Qwen Coder models (7B/14B) on the Master Radio architecture:
-👉 [AVALHLA_AI_TRAINING_PROMPTS.md](file:///home/VVgbon/.gemini/antigravity/brain/bbe30c19-93a2-4816-af81-90d470728207/AVALHLA_AI_TRAINING_PROMPTS.md)
+For rebuilding a fresh Bazzite install to the exact VVgBazz standard (layered RPMs, Flatpaks, PipeWire routing, Distrobox, Local AI, KDE persona):
+👉 [`/dev/DEV_LAB_SETUP.md`](../dev/DEV_LAB_SETUP.md) and [`/system/SYSTEM_GUIDE.md`](../system/SYSTEM_GUIDE.md)

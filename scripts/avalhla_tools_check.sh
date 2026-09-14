@@ -38,7 +38,12 @@ check_tool git git
 check_tool shellcheck shellcheck
 check_tool xmllint libxml2
 check_tool ffmpeg ffmpeg-free
-check_tool java java-17-openjdk-devel
+check_tool java java-25-openjdk-devel
+if ! command -v java >/dev/null 2>&1; then
+    echo "      Note: for Java 21 specifically, don't use java-21-openjdk-devel"
+    echo "      (doesn't resolve on Fedora 44) — see /dev/DEV_LAB_SETUP.md for"
+    echo "      the verified Temurin tarball method."
+fi
 check_tool mvn maven
 check_tool rg ripgrep
 check_tool fzf fzf
@@ -70,7 +75,7 @@ if missing:
 else:
     print("Python 3 standard library modules: ALL PRESENT & VERIFIED.")
 EOF
-pass "Python 3 standard library passes Master Radio requirements."
+pass "Python 3 standard library modules verified."
 
 # 3. Check Ollama API Connectivity
 info "Testing Ollama communication (Host -> http://localhost:11434)..."
