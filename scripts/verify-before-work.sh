@@ -405,17 +405,33 @@ check_git_github() {
 check_dev() {
     _section 10 "Dev container (coding-lab)"
     guard || { _section_end; return; }
+
     if in_container; then
         _pass "running INSIDE a container"
         [[ -f /etc/os-release ]] && _info "$(. /etc/os-release && echo "$PRETTY_NAME")"
     fi
-    if need_cmd distrobox; then
-        if distrobox list 2>/dev/null | grep -q "coding-lab"; then
-            _pass "coding-lab exists"
-            if in_container; then _pass "  ↳ currently inside it"
-            else _skip "  ↳ not inside it" "enter: make lab"; fi
-        else _warn "coding-lab not found"; _hint "distrobox create -n coding-lab -i fedora:44 -Y"; fi
-    else _warn "distrobox not installed"; fi
+
+    if ! need_cmd distrobox; then
+        _warn "distrobox not installed"
+        _hint "brew install distrobox"
+        _section_end; return
+    fi
+
+    # distrobox list can have ANSI codes; strip them before matching
+    local dlist
+    dlist=$(distrobox list 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
+    if echo "$dlist" | awk '{print $1}' | grep -qx "coding-lab"; then
+        _pass "coding-lab exists"
+        if in_container; then
+            _pass "  ↳ currently inside it"
+        else
+            _skip "  ↳ not inside it" "enter: make lab"
+        fi
+    else
+        _warn "coding-lab not found"
+        _hint "distrobox create -n coding-lab -i fedora:44 -Y"
+    fi
+
     _section_end
 }
 
