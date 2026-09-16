@@ -118,7 +118,6 @@ These are packages added ON TOP of the base Bazzite image:
 | Package | Purpose |
 |---|---|
 | `coolercontrol` | Fan/cooling control GUI |
-| `liquidctl` | Liquid cooler control (CLI) |
 | `displaylink` | USB DisplayLink monitor support |
 | `mangohud` | Gaming overlay (FPS, temps, etc.) |
 | `topgrade` | System-wide update tool |
@@ -206,4 +205,5 @@ These are packages added ON TOP of the base Bazzite image:
 - [ ] Internet Radio
 - [ ] User-friendly KDE Desktop
 - [ ] Bazzite tweaks & customization
+- [ ] Building the best buddies AVA <3
 

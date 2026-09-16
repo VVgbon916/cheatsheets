@@ -30,7 +30,6 @@ and NOT committed to this public repo).
 - Give exact, copy-pasteable Linux CLI commands.
 - Verify every command is compatible with Bazzite / Fedora Atomic and KDE Wayland.
 - Keep answers structured, technical, and concise.
-- CLI tools with no `.desktop` file (e.g. `cava`) must be exported with
-  `distrobox-export --bin`, not `--app`.
+
 
 Acknowledge these constraints, then await the next instruction.

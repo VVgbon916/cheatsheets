@@ -1,26 +1,32 @@
-# --- Avalhla personal memory / logs (NEVER commit — this repo is public) ---
-.ai-memory/conversations/
-.ai-memory/knowledge-base/
-*.jsonl
+# ── PRIVATE — NEVER PUSH ───────────────────────────────────────
+private/
+Dawa.txt
+D42k.md
+*credentials*
+*secrets*
+*.key
+*.pem
 
-# --- Real personal profile (contains identity/hardware specifics) ---
-# Keep persona/user-profile.txt.example tracked as the template;
-# the real filled-in file stays local only.
+# ── AI memory (personal conversations) ─────────────────────────
+~/.ai-memory/conversations/
+~/.ai-memory/knowledge-base/
+.ai-memory/
+
+# ── Real user profile (identity/hardware) ──────────────────────
 persona/user-profile.txt
 
-# --- KDE / Dolphin folder metadata (not project content) ---
+# ── OS junk ────────────────────────────────────────────────────
 .directory
-
-# --- Local build / cache junk ---
-__pycache__/
-*.pyc
-.venv/
-*.log
-
-# --- Editor / OS cruft ---
-.vscode/
-.idea/
 .DS_Store
-# Java tarballs/extracted JDKs — never belong in this repo
-*.tar.gz
-jdk-*/
+*.swp
+*~
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+
+# ── Logs and temp ──────────────────────────────────────────────
+*.log
+*.tmp
+/tmp/
+bazzite-system-snapshot-*.txt

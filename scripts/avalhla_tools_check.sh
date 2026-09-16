@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
 # 🛡️ AVALHLA TOOL & RUNTIME DEPENDENCY AUDIT & INSTALLER
-# Ensures Avalhla has 100% of the tools she needs to build,
-# test, validate audio streams, and inspect XML/Python code.
 # ============================================================
 set -Eeuo pipefail
 
@@ -18,93 +16,83 @@ echo -e "=====================================================${NC}"
 
 MISSING_PKGS=()
 
-# 1. Helper to check command availability
 check_tool() {
-    local cmd="$1"
-    local pkg_name="$2"
+    local cmd="$1" pkg="$2"
     if command -v "$cmd" >/dev/null 2>&1; then
         pass "$cmd ($($cmd --version 2>&1 | head -n1 | cut -c1-50))"
     else
         warn "$cmd is NOT installed."
-        MISSING_PKGS+=("$pkg_name")
+        MISSING_PKGS+=("$pkg")
     fi
 }
 
 info "Checking essential development & parser tools..."
-check_tool python3 python3
-check_tool curl curl
-check_tool jq jq
-check_tool git git
+check_tool python3    python3
+check_tool curl       curl
+check_tool jq         jq
+check_tool git        git
+check_tool gh         gh
 check_tool shellcheck shellcheck
-check_tool xmllint libxml2
-check_tool ffmpeg ffmpeg-free
-check_tool java java-25-openjdk-devel
-if ! command -v java >/dev/null 2>&1; then
-    echo "      Note: for Java 21 specifically, don't use java-21-openjdk-devel"
-    echo "      (doesn't resolve on Fedora 44) — see /dev/DEV_LAB_SETUP.md for"
-    echo "      the verified Temurin tarball method."
-fi
-check_tool mvn maven
-check_tool rg ripgrep
-check_tool fzf fzf
+check_tool xmllint    libxml2
+check_tool ffmpeg     ffmpeg-free
+check_tool java       java-25-openjdk-devel
+check_tool mvn        maven
+check_tool rg         ripgrep
+check_tool fzf        fzf
 
-# 2. Check Python standard library modules required by Master Radio
-info "Testing Python 3 core module readiness..."
+info "Testing Python 3 standard library modules..."
 python3 - << 'EOF'
 import sys
-required_modules = [
-    "json",
-    "urllib.request",
-    "urllib.error",
-    "xml.etree.ElementTree",
-    "xml.dom.minidom",
-    "concurrent.futures",
-    "time",
-    "os"
-]
-missing = []
-for mod in required_modules:
-    try:
-        __import__(mod)
-    except ImportError:
-        missing.append(mod)
-
+required = ["json","urllib.request","urllib.error",
+            "xml.etree.ElementTree","xml.dom.minidom",
+            "concurrent.futures","time","os"]
+import importlib.util
+missing = [m for m in required if importlib.util.find_spec(m) is None]
 if missing:
-    print(f"FAILED: Missing Python modules: {missing}", file=sys.stderr)
-    sys.exit(1)
-else:
-    print("Python 3 standard library modules: ALL PRESENT & VERIFIED.")
+    print(f"FAILED: Missing modules: {missing}", file=sys.stderr); sys.exit(1)
+print("Python stdlib: all present.")
 EOF
-pass "Python 3 standard library modules verified."
+pass "Python 3 stdlib passes Avalhla runtime requirements."
 
-# 3. Check Ollama API Connectivity
-info "Testing Ollama communication (Host -> http://localhost:11434)..."
+info "Testing Ollama communication (http://localhost:11434)..."
 if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-    pass "Ollama daemon is online and responding."
+    pass "Ollama daemon is online."
     MODELS=$(curl -s http://localhost:11434/api/tags | jq -r '.models[].name' 2>/dev/null || echo "")
-    if echo "$MODELS" | grep -qE "qwen|avalhla"; then
-        pass "Avalhla / Qwen model detected in Ollama."
+    if echo "$MODELS" | grep -qE "deepseek-r1|avalhla"; then
+        pass "DeepSeek-R1 / Avalhla model detected."
     else
-        warn "No Qwen / Avalhla model found in Ollama yet. Pull one with: ollama pull qwen2.5-coder:7b"
+        warn "No DeepSeek-R1 / Avalhla model found. Pull one with:"
+        echo "      ollama pull deepseek-r1:14b"
+    fi
+    echo
+    info "Verifying context length (want 16384)..."
+    ctx=$(pgrep -af llama-server | grep -o '\-c [0-9]*' | awk '{print $2}' | head -1 || true)
+    if [[ -n "$ctx" ]]; then
+        if [[ "$ctx" -ge 16384 ]]; then
+            pass "llama-server context = $ctx"
+        else
+            warn "llama-server context = $ctx (want ≥16384). Restart server with OLLAMA_CONTEXT_LENGTH=16384."
+        fi
+    else
+        info "No llama-server currently running (start on next ollama run)."
     fi
 else
     warn "Ollama is not running on http://localhost:11434."
-    echo "      Start it on host with: sudo systemctl enable --now ollama"
+    echo "      Start it on host:  OLLAMA_CONTEXT_LENGTH=16384 ollama serve"
 fi
 
-# 4. Auto-Repair / Install if inside Distrobox
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
     echo
-    warn "The following packages are needed for Avalhla: ${MISSING_PKGS[*]}"
+    warn "Missing packages: ${MISSING_PKGS[*]}"
     if [ -f /run/.containerenv ] || [ -f /.dockerenv ]; then
-        info "Inside Distrobox container! Attempting automated installation via dnf..."
+        info "Inside Distrobox — attempting automated install via dnf..."
         sudo dnf install -y "${MISSING_PKGS[@]}"
-        pass "All missing dependencies successfully installed inside container!"
+        pass "Missing dependencies installed."
     else
-        info "On Bazzite host. To keep host immutable, install these inside Distrobox:"
+        info "On Bazzite host. Install inside Distrobox (keep host immutable):"
         echo -e "${YELLOW}distrobox enter coding-lab -- sudo dnf install -y ${MISSING_PKGS[*]}${NC}"
     fi
 else
     echo
-    echo -e "${GREEN}🎉 PERFECT! Avalhla has 100% of all tools and dependencies ready to work!${NC}"
+    echo -e "${GREEN}🎉 PERFECT — Avalhla has 100% of required tools.${NC}"
 fi
