@@ -86,8 +86,9 @@ _section_end() { [[ $QUIET -eq 1 ]] && return; echo -e "${BOLD}${BLUE}╰──�
 guard() { [[ "$SKIP_SECTION" -eq 1 ]] && return 1; return 0; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
-have_sudo_nopass() { sudo -n true 2>/dev/null; }
+have_sudo_nopass() { sudo -n true </dev/null >/dev/null 2>&1; }
 in_container() {
+
     [[ -f /run/.containerenv ]] || [[ -f /.dockerenv ]] || \
     grep -qE 'docker|podman|libpod|containerd' /proc/1/cgroup 2>/dev/null
 }
