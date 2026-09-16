@@ -417,19 +417,33 @@ check_dev() {
         _section_end; return
     fi
 
-    # distrobox list can have ANSI codes; strip them before matching
+    # distrobox list format (Fedora 44, 2026):
+    #   ID           | NAME         | STATUS       | IMAGE
+    #   b7b567681a6b | coding-lab   | Up 18 min    | ...
+    # Name is in column 2 (fields split on ' | ', but awk -F' *\\| *' handles both).
     local dlist
     dlist=$(distrobox list 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
-    if echo "$dlist" | awk '{print $1}' | grep -qx "coding-lab"; then
+
+    local status
+    status=$(echo "$dlist" | awk -F' *\\| *' '$2=="coding-lab" {print $3; exit}')
+
+    if [[ -n "$status" ]]; then
         _pass "coding-lab exists"
+        _info "  ↳ status: $status"
         if in_container; then
             _pass "  ↳ currently inside it"
         else
             _skip "  ↳ not inside it" "enter: make lab"
         fi
     else
-        _warn "coding-lab not found"
-        _hint "distrobox create -n coding-lab -i fedora:44 -Y"
+        # Check if it exists under ANY state (including Exited)
+        if echo "$dlist" | awk -F' *\\| *' '{print $2}' | grep -qx "coding-lab"; then
+            _pass "coding-lab exists (not currently running)"
+            _hint "start it with: distrobox enter coding-lab"
+        else
+            _warn "coding-lab not found"
+            _hint "distrobox create -n coding-lab -i fedora:44 -Y"
+        fi
     fi
 
     _section_end
