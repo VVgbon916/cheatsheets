@@ -105,10 +105,6 @@ ai-log:
 ai-pull:
 	@ollama pull $(BASE)
 
-.PHONY: health
-health:
-	@$(SCRIPTS)/bazzite-toolkit.sh health
-
 .PHONY: update
 update:
 	@echo "→ OS updates:"
@@ -172,3 +168,9 @@ bible:
 .PHONY: keys
 keys:
 	@if [ -f private/Dawa.txt ]; then echo "⚠ opening credentials"; less private/Dawa.txt; else echo "✗ private/Dawa.txt not found"; fi
+.PHONY: journal-clean
+journal-clean:
+	@echo "→ cleaning journal (keeping last 7 days)..."
+	@sudo journalctl --rotate
+	@sudo journalctl --vacuum-time=7d
+	@echo "✓ done"
