@@ -450,7 +450,7 @@ check_dev() {
 check_tooling() {
     _section 11 "Core tooling"
     guard || { _section_end; return; }
-    local tools=(git jq curl python3 rg fzf)
+    local tools=(git jq curl python3 rg fzf locate)
     local missing=()
     for t in "${tools[@]}"; do
         if need_cmd "$t"; then _pass "$t"
