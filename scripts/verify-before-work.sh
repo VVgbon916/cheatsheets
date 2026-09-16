@@ -199,10 +199,7 @@ check_filesystem() {
         if [[ "$avail" -lt "$MIN_FREE_GB" ]]; then _warn "only ${avail}G free on /var" "want ≥${MIN_FREE_GB}G"
         else _pass "${avail}G free on /var"; fi
     fi
-    if [[ $FAST -eq 0 && "$var_fs" == "btrfs" ]] && need_cmd btrfs && have_sudo_nopass; then
-        local used; used=$(sudo btrfs filesystem usage -b /var 2>/dev/null | awk '/Used:/ {print $2; exit}' || echo "")
-        [[ -n "$used" ]] && _info "btrfs used: $(numfmt --to=iec <<<"$used" 2>/dev/null || echo "$used")"
-    fi
+
     if command -v df >/dev/null; then
         local ifree; ifree=$(df -i --output=ipcent /var 2>/dev/null | tail -1 | tr -d ' %' || echo 0)
         if [[ "$ifree" -gt 90 ]]; then _warn "inode usage at ${ifree}%"
@@ -475,7 +472,15 @@ check_errors() {
     [[ $FAST -eq 1 ]] && { _skip "journal check" "--fast"; _section_end; return; }
     if need_cmd journalctl; then
         local errs
-        errs=$(journalctl -p err --since "30 min ago" --no-pager -q 2>/dev/null | tail -n 10 || true)
+        # Filter out benign noise:
+        #   - sudo[...] "password is required" (audit log, not an error)
+        #   - pam_systemd Varlink PermissionDenied (known Bazzite quirk)
+        #   - systemd-tmpfiles group/user lookups (harmless during boot)
+        errs=$(journalctl -p err --since "30 min ago" --no-pager -q 2>/dev/null \
+               | grep -vE 'sudo\[[0-9]+\]:.*password is required' \
+               | grep -vE 'pam_systemd\(sudo:session\)' \
+               | grep -vE 'Failed to resolve (user|group)' \
+               | tail -n 10 || true)
         if [[ -z "$errs" ]]; then _pass "no errors in the last 30 min"
         else
             local n; n=$(echo "$errs" | wc -l)
