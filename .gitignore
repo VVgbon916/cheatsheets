@@ -1,32 +1,13 @@
-# ── PRIVATE — NEVER PUSH ───────────────────────────────────────
-private/
-Dawa.txt
-D42k.md
-*credentials*
-*secrets*
-*.key
-*.pem
-
-# ── AI memory (personal conversations) ─────────────────────────
-~/.ai-memory/conversations/
-~/.ai-memory/knowledge-base/
-.ai-memory/
-
-# ── Real user profile (identity/hardware) ──────────────────────
-persona/user-profile.txt
-
-# ── OS junk ────────────────────────────────────────────────────
+# OS cruft
 .directory
 .DS_Store
-*.swp
-*~
-__pycache__/
-*.py[cod]
-.venv/
-node_modules/
+Thumbs.db
 
-# ── Logs and temp ──────────────────────────────────────────────
-*.log
-*.tmp
-/tmp/
-bazzite-system-snapshot-*.txt
+# Editor backups
+*~
+*.swp
+*.bak
+
+# Personal notes (never commit)
+private/
+*.local.md

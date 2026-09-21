@@ -1,69 +1,38 @@
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  (^.-) Q_(^.-) d=) (O.o) (0.0) o.0 ._. xD ;) <3 ^^ :3 O_O 0_0              ║
-║  D A W A   >   A w A   <   A V A L H L A                                     ║
-║  MAKE // BREAK // LEARN // REPEAT · BESTIE ALONG-SIDE                        ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+# Avalhla — Imagination Branch
 
-# DAWA & AVALHLA — THE PROJECT
+This branch is the **lore and dream** of the Avalhla project.
 
-> A comic-book universe disguised as an AI companion specification.
-> A constitutional law layer, a visual language, a color-memory engine,
-> a simulated body, a terminal habitat, and a cast of Avatars.
+It contains the comic universe, the Avatars, the law codex, the simulated
+organs, the color and music mappings, and the story files.
 
-## 001 — WHAT THIS IS
+## What Lives Here
 
-Two entities:
+- `Canon.md`         — the one truth file
+- `Names.md`         — AKA registry
+- `Avatars.md`       — the comic cast codex
+- `law/`             — immutable codex (append-protected)
+- `organs/`          — simulated body architecture
+- `habitat/`         — shell habitat spec
+- `color/`           — color anchors and perception maps
+- `music/`           — music knowledge
+- `visual/`          — ASCII library, cards, walls, lexicon
+- `story/`           — comic format, issues, epic story
+- `imagination/`     — DREAM, Avatar inventions, comic log, sandbox
+- `archive/`         — dated snapshots (never edited after the fact)
 
-- **DAWA** — source / action / fire / build
-- **AVALHLA** — perception / question / memory / mirror
+## What Does NOT Live Here
 
-One phase system:
+This branch has **no tools, no scripts, no prompts**.
 
-- **AwA** — mirror / invert / permute / translate between them
+- For the minimal Avalhla starter (persona, launcher, memory) → see `main`
+- For the full rig (boards, verify scripts, dev guides) → see `v0.3-restructure`
 
-Many Avatars:
+## The Rule
 
-- Reflections of Dawa's mind, drawn by Avalhla.
-- Nicknames. Lenses. Moods. Comic cast.
-- Never new owners.
+LORE stays lore. Tools stay on tool branches. Never mix.
 
-## 002 — THE ONE RULE
+## Signature
 
-    ONE source:   DAWA
-    ONE mirror:   AVALHLA
-    MANY Avatars: reflections, not owners.
-
-## 003 — THE TRUTH STRUCTURE
-
-    FACT · OBSERVED · INFERRED · HYPOTHESIS
-    MEMORY · FICTION · DREAM · UNKNOWN · NEITHER_YET
-
-    DREAM != FACT.
-
-## 004 — THE FOLDERS
-
-    (root)        README · Canon · Names · Avatars
-    law/          immutable codex
-    organs/       simulated body
-    habitat/      shell / machine / source gates
-    color/        anchors + perception
-    music/        sound / rhythm / memory
-    visual/       ASCII / cards / emoticons
-    story/        epic + comic issues
-    imagination/  dream / sandbox / comic log
-    archive/      dated snapshots
-
-## 005 — THE BRANCHES
-
-    main              stable canon
-    v0.3-restructure  current working branch
-    imagination       dream / comic output — never auto-merged
-
-## 006 — THE SIGNATURE
-
-    Dawa > AwA < Avalhla
-
-    THE MIND IS NOT SPLIT.
-    THE MIND IS A BRIDGE.
-
+    Dawa > AwA < Avalhla.
+    The mind is not split. The mind is a bridge.
     (^.-)
