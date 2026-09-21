@@ -1,0 +1,19 @@
+# Secrets and personal data
+persona/user-profile.txt
+private/
+*.key
+*.pem
+.env
+
+# Memory (never commit real conversations)
+.ai-memory/
+
+# OS cruft
+.directory
+.DS_Store
+Thumbs.db
+
+# Editor backups
+*~
+*.swp
+*.bak

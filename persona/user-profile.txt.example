@@ -1,0 +1,20 @@
+# Copy this file to user-profile.txt and fill in your real values.
+# user-profile.txt is gitignored — it will NOT be committed.
+
+### USER & HARDWARE IDENTITY
+- User: <username> (`<host-user>@<hostname>`)
+- OS: Bazzite DX NVIDIA <version> (Fedora Atomic / rpm-ostree)
+- Desktop Environment: KDE Plasma on Wayland
+- CPU: <model> (<cores>c/<threads>t @ <base>-<boost> GHz)
+- Cooling: <air|liquid> (monitored via <tool>)
+- GPU: <model> <VRAM> (Driver <version>, CUDA <version>), power cap <watts>W
+- RAM: <size> physical + <size> zram swap (swappiness = <n>)
+- Storage: <size> <type>, <filesystem> (`/`, `/var`, `/var/home`)
+- Audio: PipeWire <version> with <n> virtual sinks (<names>) + <DAC/interface>
+- Network: <NIC model> (<TCP congestion control> active)
+
+### Layered packages (rpm-ostree)
+- <list only what's actually layered, e.g. coolercontrol, liquidctl, mangohud, topgrade, gh>
+
+### Distrobox containers
+- <container-name>: <purpose, e.g. "coding-lab — Java/Maven/ShellCheck/Cava/GCC">

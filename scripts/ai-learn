@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# ai-learn — index a directory or file into Avalhla's knowledge base
+set -Eeuo pipefail
+
+MEMORY_DIR="$HOME/.ai-memory"
+KB_DIR="$MEMORY_DIR/knowledge-base"
+INDEX_FILE="$KB_DIR/_index.json"
+
+mkdir -p "$KB_DIR"
+
+if [[ -z "${1:-}" ]]; then
+    echo "Usage: ai-learn <path>"
+    echo "  Index a file or folder into ~/.ai-memory/knowledge-base/"
+    echo ""
+    echo "Examples:"
+    echo "  ai-learn ~/projects/cheatsheets"
+    echo "  ai-learn ~/projects/cheatsheets/scripts"
+    echo "  ai-learn ~/.bashrc"
+    exit 1
+fi
+
+TARGET="$1"
+
+if [[ ! -e "$TARGET" ]]; then
+    echo "✗ Path not found: $TARGET"
+    exit 1
+fi
+
+# ── Init index if missing ──
+if [[ ! -f "$INDEX_FILE" ]]; then
+    echo '{}' > "$INDEX_FILE"
+fi
+
+TOTAL_FILES=0
+TOTAL_BYTES=0
+
+index_file() {
+    local src="$1"
+    local rel="${src#$HOME/}"
+    local safe_name
+    safe_name=$(echo "$rel" | tr '/' '_' | tr -c '[:alnum:]_.-' '_')
+    local dest="$KB_DIR/$safe_name"
+
+    # Skip binary / large files
+    local size
+    size=$(stat -c '%s' "$src" 2>/dev/null || echo 0)
+    if [[ "$size" -gt 200000 ]]; then
+        echo "  skip (too big): $rel"
+        return
+    fi
+
+    if file --mime "$src" 2>/dev/null | grep -qE 'charset=(binary|unknown)'; then
+        echo "  skip (binary): $rel"
+        return
+    fi
+
+    cp "$src" "$dest"
+
+    local hash
+    hash=$(sha256sum "$src" | awk '{print $1}')
+
+    local entry
+    entry=$(jq -n \
+        --arg path "$rel" \
+        --arg dest "$dest" \
+        --arg hash "$hash" \
+        --argjson size "$size" \
+        --arg ts "$(date -Iseconds)" \
+        '{path: $path, dest: $dest, hash: $hash, size: $size, indexed: $ts}')
+
+    jq --arg p "$rel" --argjson e "$entry" '.[$p] = $e' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
+    mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
+
+    echo "  ✓ $rel ($size bytes)"
+    TOTAL_FILES=$((TOTAL_FILES + 1))
+    TOTAL_BYTES=$((TOTAL_BYTES + size))
+}
+
+echo ""
+echo "╭─────────────────────────────────────────────────────────────╮"
+echo "│  ai-learn :: indexing into knowledge-base                   │"
+echo "╰─────────────────────────────────────────────────────────────╯"
+echo ""
+echo "  Target: $TARGET"
+echo ""
+
+if [[ -f "$TARGET" ]]; then
+    index_file "$TARGET"
+else
+    while IFS= read -r -d '' f; do
+        index_file "$f"
+    done < <(find "$TARGET" -type f \
+        ! -path "*/.git/*" \
+        ! -path "*/node_modules/*" \
+        ! -path "*/__pycache__/*" \
+        ! -path "*/.venv/*" \
+        -print0)
+fi
+
+echo ""
+echo "  Total: $TOTAL_FILES files, $TOTAL_BYTES bytes"
+echo "  Index: $INDEX_FILE"
+echo "  KB   : $KB_DIR"
+echo ""

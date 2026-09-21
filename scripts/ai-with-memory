@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# ai-with-memory — persistent chat with Avalhla across sessions
+set -Eeuo pipefail
+
+MEMORY_DIR="$HOME/.ai-memory"
+CONV_DIR="$MEMORY_DIR/conversations"
+KB_DIR="$MEMORY_DIR/knowledge-base"
+PROFILE_DIR="$MEMORY_DIR/profiles"
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVALHLA_MODEL:-avalhla}"
+SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
+PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
+
+# ── Ensure dirs exist ──
+mkdir -p "$CONV_DIR" "$KB_DIR" "$PROFILE_DIR"
+
+# ── Load profile ──
+PROFILE=""
+if [[ -f "$PROFILE_FILE" ]]; then
+    PROFILE="$(cat "$PROFILE_FILE")"
+fi
+
+# ── Check server ──
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "✗ Ollama server not reachable at $OLLAMA_HOST"
+    echo "  Start it with: avastart"
+    exit 1
+fi
+
+# ── Greeting from last session ──
+LAST_TOPIC=""
+if [[ -f "$SESSION_FILE" ]]; then
+    LAST_TOPIC=$(tail -n 20 "$SESSION_FILE" 2>/dev/null \
+        | jq -rs '[.[] | select(.role=="user")] | last | .content // ""' 2>/dev/null \
+        | head -c 120 || true)
+fi
+
+echo ""
+echo "╭─────────────────────────────────────────────────────────────╮"
+echo "│  Avalhla :: memory session                                  │"
+echo "│  Date   : $(date +%Y-%m-%d)                                        │"
+echo "│  File   : $SESSION_FILE"
+echo "╰─────────────────────────────────────────────────────────────╯"
+
+if [[ -n "$LAST_TOPIC" ]]; then
+    echo ""
+    echo "  Last time we talked about:"
+    echo "  → $LAST_TOPIC"
+fi
+
+echo ""
+echo "  Commands: /bye exit  /clear reset  /history last 10  /mem show profile"
+echo ""
+
+# ── Chat loop ──
+HISTORY="[]"
+
+while true; do
+    printf "\n\033[1;36m>>>\033[0m "
+    IFS= read -r line || break
+
+    # ── Slash commands ──
+    case "$line" in
+        /bye|/exit)
+            echo ""
+            echo "  ✿ Session saved to $SESSION_FILE"
+            break
+            ;;
+        /clear)
+            HISTORY="[]"
+            echo "  ✿ Context cleared"
+            continue
+            ;;
+        /history)
+            echo "$HISTORY" | jq -r '.[] | "\(.role): \(.content)"' | tail -n 20
+            continue
+            ;;
+        /mem)
+            echo "  Profile: $PROFILE_FILE"
+            if [[ -n "$PROFILE" ]]; then
+                echo "$PROFILE" | head -n 15
+            else
+                echo "  (no profile yet — copy persona/user-profile.txt.example)"
+            fi
+            continue
+            ;;
+        "")
+            continue
+            ;;
+    esac
+
+    # ── Build prompt with history + profile ──
+    FULL_PROMPT="$line"
+    if [[ -n "$PROFILE" ]]; then
+        FULL_PROMPT="[USER PROFILE]
+$PROFILE
+
+[USER]
+$line"
+    fi
+
+    # ── Add previous turns (last 8) ──
+    if [[ "$HISTORY" != "[]" ]]; then
+        CONTEXT=$(echo "$HISTORY" | jq -r '.[-8:] | .[] | "\(.role): \(.content)"')
+        FULL_PROMPT="$CONTEXT
+
+[USER]
+$line"
+    fi
+
+    # ── Call Ollama ──
+    RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
+        -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
+        '{model: $m, prompt: $p, stream: false}')" \
+        | jq -r '.response')
+
+    echo ""
+    echo "$RESPONSE"
+
+    # ── Save to session file ──
+    jq -cn --arg r "user" --arg c "$line" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
+    jq -cn --arg r "assistant" --arg c "$RESPONSE" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
+
+    # ── Update in-memory history ──
+    HISTORY=$(echo "$HISTORY" | jq -c \
+        --arg u "$line" --arg a "$RESPONSE" \
+        '. + [{role:"user", content:$u}, {role:"assistant", content:$a}]')
+done
