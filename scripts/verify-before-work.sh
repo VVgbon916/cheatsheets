@@ -20,7 +20,7 @@ EXPECTED_BRANCH="v0.3-restructure"
 EXPECTED_CTX=16384
 MIN_FREE_GB=20
 OLLAMA_API="http://127.0.0.1:11434/api/tags"
-OLLAMA_MODEL="deepseek-r1-tool-14b-16k"
+OLLAMA_MODEL="avalhla"
 LOG="$HOME/.ollama/serve.log"
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -209,48 +209,66 @@ check_filesystem() {
 }
 
 check_ollama() {
-    _section 4 "Ollama / DeepSeek-R1 16K"
+    _section 4 "Ollama container / Avalhla 16K"
     guard || { _section_end; return; }
     if ! need_cmd ollama; then _fail "ollama binary not found"; _section_end; return; fi
     local ov; ov=$(ollama --version 2>/dev/null | head -1 | cut -c1-60 || echo "?")
     _pass "ollama installed" "$ov"
-    if ! curl -fsS "$OLLAMA_API" >/dev/null 2>&1; then
-        _warn "server not running"
+
+    # ── Container status via systemd ──
+    if systemctl --user is-active --quiet ollama.service 2>/dev/null; then
+        _pass "ollama.service active"
+    else
+        _warn "ollama.service not active"
         if [[ $FIX -eq 1 ]]; then
-            _fix "starting ollama serve at ${EXPECTED_CTX}"
-            pkill -f "ollama serve" 2>/dev/null || true; sleep 1
-            OLLAMA_CONTEXT_LENGTH="$EXPECTED_CTX" nohup ollama serve > "$LOG" 2>&1 &
+            _fix "starting ollama.service"
+            systemctl --user start ollama.service
             for _ in $(seq 1 30); do curl -fsS "$OLLAMA_API" >/dev/null 2>&1 && break; sleep 1; done
         else
-            _hint "make ctx-16k   (or: OLLAMA_CONTEXT_LENGTH=16384 ollama serve &)"
+            _hint "systemctl --user start ollama.service   (or: avastart)"
         fi
     fi
-    if curl -fsS "$OLLAMA_API" >/dev/null 2>&1; then
-        _pass "server reachable"
-        local models
-        models=$(curl -s "$OLLAMA_API" | jq -r '.models[].name' 2>/dev/null || echo "")
-        if echo "$models" | grep -q "deepseek-r1"; then
-            _pass "DeepSeek-R1 present"
-            echo "$models" | grep "deepseek-r1" | sed 's/^/      · /'
-        else _warn "no DeepSeek-R1 model"; _hint "ollama pull deepseek-r1:14b"; fi
-        local ctx
-        ctx=$(pgrep -af llama-server 2>/dev/null | grep -o '\-c [0-9]*' | awk '{print $2}' | head -1 || true)
-        if [[ -z "$ctx" ]]; then _skip "no llama-server running" "ctx applies on next 'ollama run'"
-        elif [[ "$ctx" -ge "$EXPECTED_CTX" ]]; then _pass "context = $ctx  ✅"
+
+    # ── API reachability ──
+    if ! curl -fsS "$OLLAMA_API" >/dev/null 2>&1; then
+        _fail "API not reachable at $OLLAMA_API"
+        _hint "systemctl --user status ollama.service"
+        _section_end; return
+    fi
+    _pass "server reachable"
+
+    # ── Model presence ──
+    local models
+    models=$(curl -s "$OLLAMA_API" | jq -r '.models[].name' 2>/dev/null || echo "")
+    if echo "$models" | grep -q "^${OLLAMA_MODEL}:latest$\|^${OLLAMA_MODEL}$"; then
+        _pass "$OLLAMA_MODEL present"
+    else
+        _warn "model '$OLLAMA_MODEL' not found"
+        _hint "cd ~/projects/cheatsheets && ollama create $OLLAMA_MODEL -f persona/avalhla.Modelfile"
+    fi
+
+    # ── Context check from Quadlet ──
+    local quadlet="$HOME/.config/containers/systemd/ollama.container"
+    if [[ -f "$quadlet" ]]; then
+        local ctx_from_file
+        ctx_from_file=$(grep -oE 'OLLAMA_CONTEXT_LENGTH=[0-9]+' "$quadlet" | head -1 | cut -d= -f2 || true)
+        if [[ -z "$ctx_from_file" ]]; then
+            _skip "context not set in Quadlet" "defaults to 4096; want ${EXPECTED_CTX}"
+        elif [[ "$ctx_from_file" -ge "$EXPECTED_CTX" ]]; then
+            _pass "context = $ctx_from_file (Quadlet)"
         else
-            _fail "context = $ctx" "want ≥${EXPECTED_CTX}"
-            if [[ $FIX -eq 1 ]]; then
-                _fix "restarting server at ${EXPECTED_CTX}"
-                pkill -f "ollama serve" 2>/dev/null || true; sleep 2
-                OLLAMA_CONTEXT_LENGTH="$EXPECTED_CTX" nohup ollama serve > "$LOG" 2>&1 &
-                for _ in $(seq 1 30); do curl -fsS "$OLLAMA_API" >/dev/null 2>&1 && break; sleep 1; done
-            else _hint "make fix   (auto-restarts at 16384)"; fi
+            _fail "context = $ctx_from_file" "want >= ${EXPECTED_CTX}"
+            _hint "ollama-ctx ${EXPECTED_CTX}"
         fi
-        if need_cmd nvidia-smi; then
-            local n; n=$(nvidia-smi --query-compute-apps=process_name --format=csv,noheader 2>/dev/null | grep -ci ollama || true)
-            if [[ "$n" -gt 0 ]]; then _pass "GPU in use by ollama ($n process)"
-            else _skip "no ollama GPU process" "only checkable while a model runs"; fi
-        fi
+    else
+        _skip "Quadlet not found" "$quadlet"
+    fi
+
+    # ── GPU usage ──
+    if need_cmd nvidia-smi; then
+        local n; n=$(nvidia-smi --query-compute-apps=process_name --format=csv,noheader 2>/dev/null | grep -ci ollama || true)
+        if [[ "$n" -gt 0 ]]; then _pass "GPU in use by ollama ($n process)"
+        else _skip "no ollama GPU process" "only checkable while a model runs"; fi
     fi
     _section_end
 }

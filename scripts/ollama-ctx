@@ -1,34 +1,80 @@
 #!/usr/bin/env bash
-# ollama-ctx — restart ollama serve with a given context length.
-# Usage: ollama-ctx [4096|8192|16384|32768|65536]
+# ollama-ctx — show or change the Ollama container's context length.
+#
+# In the container world, context is set in:
+#   ~/.config/containers/systemd/ollama.container
+# via: Environment=OLLAMA_CONTEXT_LENGTH=NNNN
+#
+# This script shows the current setting and helps you change it.
+#
+# Usage:
+#   ollama-ctx              show current context
+#   ollama-ctx 8192         change to 8192
+#   ollama-ctx 16384        change to 16384 (default)
+#   ollama-ctx 32768        change to 32768 (needs more VRAM)
 
-set -uo pipefail
-CTX="${1:-16384}"
+set -Eeuo pipefail
+
+QUADLET="$HOME/.config/containers/systemd/ollama.container"
+SERVICE="ollama.service"
+
+# ── No argument: show current ──
+if [[ $# -eq 0 ]]; then
+    echo "── Ollama container context ──"
+    if [[ -f "$QUADLET" ]]; then
+        ctx=$(grep -oE 'OLLAMA_CONTEXT_LENGTH=[0-9]+' "$QUADLET" | head -1 | cut -d= -f2 || echo "unset")
+        echo "  Quadlet : $QUADLET"
+        echo "  Context : ${ctx:-16384 (default)}"
+    else
+        echo "  Quadlet : $QUADLET (NOT FOUND)"
+    fi
+    echo ""
+    echo "  Service : $(systemctl --user is-active $SERVICE 2>/dev/null || echo unknown)"
+    echo ""
+    echo "  To change: ollama-ctx 8192"
+    echo "             ollama-ctx 16384"
+    echo "             ollama-ctx 32768"
+    exit 0
+fi
+
+CTX="$1"
 
 case "$CTX" in
     4096|8192|16384|32768|65536) ;;
     *) echo "usage: $0 [4096|8192|16384|32768|65536]"; exit 1 ;;
 esac
 
-LOG="$HOME/.ollama/serve.log"
-API="http://127.0.0.1:11434/api/tags"
+if [[ ! -f "$QUADLET" ]]; then
+    echo "✗ Quadlet not found: $QUADLET"
+    echo "  Create it first — see AVALHLA_CHEATSHEET.txt"
+    exit 1
+fi
 
-echo "→ stopping any running server..."
-pkill -f "ollama serve" 2>/dev/null && sleep 2 || true
+# ── Check if the line already exists ──
+if grep -q 'OLLAMA_CONTEXT_LENGTH=' "$QUADLET"; then
+    sed -i "s/OLLAMA_CONTEXT_LENGTH=[0-9]*/OLLAMA_CONTEXT_LENGTH=$CTX/" "$QUADLET"
+    echo "→ updated context to $CTX in $QUADLET"
+else
+    # Add it under [Container] section
+    sed -i "/^\[Container\]/a Environment=OLLAMA_CONTEXT_LENGTH=$CTX" "$QUADLET"
+    echo "→ added OLLAMA_CONTEXT_LENGTH=$CTX to $QUADLET"
+fi
 
-echo "→ starting at ${CTX} tokens..."
-mkdir -p "$(dirname "$LOG")"
-OLLAMA_CONTEXT_LENGTH="$CTX" nohup ollama serve > "$LOG" 2>&1 &
+echo "→ reloading systemd..."
+systemctl --user daemon-reload
+
+echo "→ restarting $SERVICE..."
+systemctl --user restart "$SERVICE"
 
 echo "→ waiting for it to come up..."
 for _ in $(seq 1 30); do
-    if curl -fsS "$API" >/dev/null 2>&1; then
-        echo "✓ ready (ctx=${CTX})"
-        pgrep -af llama-server 2>/dev/null | grep -o '\-c [0-9]*' | head -1 || true
+    if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        echo "✓ ready (ctx=$CTX)"
         exit 0
     fi
     sleep 1
 done
 
-echo "✗ server didn't respond in 30s — check $LOG"
+echo "✗ service didn't respond in 30s"
+echo "  check: systemctl --user status $SERVICE"
 exit 1
