@@ -1,180 +1,129 @@
 #!/usr/bin/env bash
-# ============================================================
-# 💖 AVALHLA INTERACTIVE AI TERMINAL (WITH PERSISTENT MEMORY)
-# ============================================================
+# ai-with-memory — persistent chat with Avalhla across sessions
 set -Eeuo pipefail
 
-MODEL="${1:-avalhla}"
-USER_PROFILE="$HOME/.ai-memory/profiles/user-profile.txt"
-SYSTEM_PROMPT="$HOME/.ai-memory/system-prompt.txt"
-MEMORY_DIR="$HOME/.ai-memory/conversations"
-CURRENT_LOG="$MEMORY_DIR/$(date +%Y-%m-%d).jsonl"
+MEMORY_DIR="$HOME/.ai-memory"
+CONV_DIR="$MEMORY_DIR/conversations"
+KB_DIR="$MEMORY_DIR/knowledge-base"
+PROFILE_DIR="$MEMORY_DIR/profiles"
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-PINK='\033[1;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVALHLA_MODEL:-avalhla}"
+SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
+PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
 
-# Ensure memory directory exists
-mkdir -p "$MEMORY_DIR" "$HOME/.ai-memory/var"
+# ── Ensure dirs exist ──
+mkdir -p "$CONV_DIR" "$KB_DIR" "$PROFILE_DIR"
 
-ensure_ollama() {
-    if ! command -v ollama >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠️ Ollama is not installed on PATH.${NC}" >&2
-        echo "   Install on host: curl -fsSL https://ollama.com/install.sh | sh" >&2
-        exit 1
-    fi
+# ── Load profile ──
+PROFILE=""
+if [[ -f "$PROFILE_FILE" ]]; then
+    PROFILE="$(cat "$PROFILE_FILE")"
+fi
 
-    # Check if Ollama service is responding
-    if ! curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-        echo -e "${PINK}🔄 Starting Ollama background service...${NC}" >&2
-        sudo systemctl start ollama 2>/dev/null || setsid ollama serve >/dev/null 2>&1 &
-        sleep 2
-    fi
+# ── Check server ──
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "✗ Ollama server not reachable at $OLLAMA_HOST"
+    echo "  Start it with: avastart"
+    exit 1
+fi
 
-    # Check model availability; if avalhla not built, fallback to qwen2.5-coder:7b
-    if ! ollama list 2>/dev/null | grep -qE "avalhla|qwen2.5-coder:7b|qwen3.5"; then
-        echo -e "${YELLOW}📥 Pulling qwen2.5-coder:7b for Avalhla...${NC}" >&2
-        ollama pull qwen2.5-coder:7b
-        MODEL="qwen2.5-coder:7b"
-    fi
-}
+# ── Greeting from last session ──
+LAST_TOPIC=""
+if [[ -f "$SESSION_FILE" ]]; then
+    LAST_TOPIC=$(tail -n 20 "$SESSION_FILE" 2>/dev/null \
+        | jq -rs '[.[] | select(.role=="user")] | last | .content // ""' 2>/dev/null \
+        | head -c 120 || true)
+fi
 
-load_greeting() {
-    local name
-    name=$(grep "^Name:" "$USER_PROFILE" 2>/dev/null | cut -d: -f2 | xargs || echo "Dawa")
-    echo -e "${PINK}💖 [AVALHLA] Hey ${name}! Your cute nerdy bestie is online & loaded in GPU VRAM! ✨${NC}"
+echo ""
+echo "╭─────────────────────────────────────────────────────────────╮"
+echo "│  Avalhla :: memory session                                  │"
+echo "│  Date   : $(date +%Y-%m-%d)                                        │"
+echo "│  File   : $SESSION_FILE"
+echo "╰─────────────────────────────────────────────────────────────╯"
 
-    local last_conv
-    last_conv=$(find "$MEMORY_DIR" -maxdepth 1 -type f -name "*.jsonl" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)
-    if [ -n "$last_conv" ] && [ -f "$last_conv" ]; then
-        local last_topic
-        last_topic=$(tail -1 "$last_conv" 2>/dev/null | grep -o '"user":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
-        if [ -n "$last_topic" ]; then
-            echo -e "${CYAN}📚 Last memory: ${last_topic:0:50}...${NC}"
-        fi
-    fi
-    echo -e "${YELLOW}Type 'exit' to quit, 'memory' for stats, 'clear' to reset view.${NC}"
-    echo -e "${PINK}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
+if [[ -n "$LAST_TOPIC" ]]; then
+    echo ""
+    echo "  Last time we talked about:"
+    echo "  → $LAST_TOPIC"
+fi
 
-save_conversation() {
-    local user_msg="$1"
-    local ai_response="$2"
-    local timestamp
-    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+echo ""
+echo "  Commands: /bye exit  /clear reset  /history last 10  /mem show profile"
+echo ""
 
-    mkdir -p "$(dirname "$CURRENT_LOG")"
-
-    local esc_user_msg esc_ai_response
-    if command -v python3 >/dev/null 2>&1; then
-        esc_user_msg=$(printf '%s' "$user_msg" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
-        esc_ai_response=$(printf '%s' "$ai_response" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
-    else
-        esc_user_msg=$(printf '%s' "$user_msg" | sed -e 's/\\/\\\\/g' -e 's/"/\\\"/g' | tr '\n' ' ')
-        esc_ai_response=$(printf '%s' "$ai_response" | sed -e 's/\\/\\\\/g' -e 's/"/\\\"/g' | tr '\n' ' ')
-    fi
-
-    printf '{"timestamp":"%s","user":"%s","ai":"%s","model":"%s"}\n' \
-        "$timestamp" "$esc_user_msg" "$esc_ai_response" "$MODEL" >> "$CURRENT_LOG"
-}
-
-load_recent_context() {
-    if [ -f "$CURRENT_LOG" ]; then
-        tail -4 "$CURRENT_LOG" 2>/dev/null || true
-    fi
-}
-
-run_avalhla() {
-    local user_input="$1"
-    local system profile recent_context full_prompt
-
-    system=$(cat "$SYSTEM_PROMPT" 2>/dev/null || echo "You are Avalhla.")
-    profile=$(cat "$USER_PROFILE" 2>/dev/null || echo "")
-    recent_context=$(load_recent_context)
-
-    full_prompt="System Directive:
-$system
-
-User Specifications:
-$profile
-
-Recent Interaction History:
-$recent_context
-
-Dawa asks:
-$user_input"
-
-    local prompt_file response
-    prompt_file=$(mktemp)
-    printf '%s' "$full_prompt" > "$prompt_file"
-
-    # Pipe prompt directly to Ollama to guarantee rock-solid execution without argument limit
-    response=$(ollama run "$MODEL" < "$prompt_file" 2>/dev/null || true)
-    rm -f "$prompt_file"
-
-    if [ -z "${response//[[:space:]]/}" ]; then
-        # Fallback to direct HTTP API if CLI pipe is silent
-        response=$(curl -s http://localhost:11434/api/generate \
-            -d "$(jq -n --arg m "$MODEL" --arg p "$full_prompt" '{model: $m, prompt: $p, stream: false}')" \
-            | jq -r '.response' 2>/dev/null || echo "")
-    fi
-
-    printf '%s' "$response"
-}
-
-ensure_ollama
-load_greeting
+# ── Chat loop ──
+HISTORY="[]"
 
 while true; do
-    read -r -p "$(printf '%b' "${PINK}Dawa:${NC} ")" prompt || break
+    printf "\n\033[1;36m>>>\033[0m "
+    IFS= read -r line || break
 
-    case "$prompt" in
-        "exit"|"quit")
-            echo -e "${PINK}💖 Bye Dawa! Everything we worked on is saved in my memory! See ya! ✨${NC}"
+    # ── Slash commands ──
+    case "$line" in
+        /bye|/exit)
+            echo ""
+            echo "  ✿ Session saved to $SESSION_FILE"
             break
             ;;
-        "help")
-            echo "Commands:"
-            echo "  exit       - Save & Quit"
-            echo "  clear      - Clear screen"
-            echo "  memory     - View memory & knowledge base stats"
-            echo "  history    - Show today's chat history"
+        /clear)
+            HISTORY="[]"
+            echo "  ✿ Context cleared"
             continue
             ;;
-        "clear")
-            clear
-            load_greeting
+        /history)
+            echo "$HISTORY" | jq -r '.[] | "\(.role): \(.content)"' | tail -n 20
             continue
             ;;
-        "history")
-            if [ -f "$CURRENT_LOG" ]; then
-                echo -e "${CYAN}=== TODAY'S CONVERSATION HISTORY ===${NC}"
-                grep -o '"user":"[^"]*"' "$CURRENT_LOG" | cut -d'"' -f4
+        /mem)
+            echo "  Profile: $PROFILE_FILE"
+            if [[ -n "$PROFILE" ]]; then
+                echo "$PROFILE" | head -n 15
+            else
+                echo "  (no profile yet — copy persona/user-profile.txt.example)"
             fi
             continue
             ;;
-        "memory")
-            echo -e "${CYAN}=== AVALHLA MEMORY STATS ===${NC}"
-            echo "Conversations today: $(wc -l < "$CURRENT_LOG" 2>/dev/null || echo 0)"
-            echo "Total logged days:   $(ls -1 "$MEMORY_DIR"/*.jsonl 2>/dev/null | wc -l)"
-            echo "Knowledge base size: $(du -sh "$HOME/.ai-memory/knowledge-base" 2>/dev/null | cut -f1 || echo '0B')"
+        "")
             continue
             ;;
     esac
 
-    [ -z "$prompt" ] && continue
+    # ── Build prompt with history + profile ──
+    FULL_PROMPT="$line"
+    if [[ -n "$PROFILE" ]]; then
+        FULL_PROMPT="[USER PROFILE]
+$PROFILE
 
-    echo -e "${YELLOW}⚡ Thinking on RTX 3060...${NC}"
-    response=$(run_avalhla "$prompt")
-
-    if [ -z "${response//[[:space:]]/}" ]; then
-        echo -e "${YELLOW}⚠️ Ava couldn't generate a response. Is Ollama running? Try again.${NC}"
-        continue
+[USER]
+$line"
     fi
 
-    echo -e "${PINK}Ava:${NC} $response\n"
-    save_conversation "$prompt" "$response"
+    # ── Add previous turns (last 8) ──
+    if [[ "$HISTORY" != "[]" ]]; then
+        CONTEXT=$(echo "$HISTORY" | jq -r '.[-8:] | .[] | "\(.role): \(.content)"')
+        FULL_PROMPT="$CONTEXT
+
+[USER]
+$line"
+    fi
+
+    # ── Call Ollama ──
+    RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
+        -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
+        '{model: $m, prompt: $p, stream: false}')" \
+        | jq -r '.response')
+
+    echo ""
+    echo "$RESPONSE"
+
+    # ── Save to session file ──
+    jq -cn --arg r "user" --arg c "$line" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
+    jq -cn --arg r "assistant" --arg c "$RESPONSE" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
+
+    # ── Update in-memory history ──
+    HISTORY=$(echo "$HISTORY" | jq -c \
+        --arg u "$line" --arg a "$RESPONSE" \
+        '. + [{role:"user", content:$u}, {role:"assistant", content:$a}]')
 done
