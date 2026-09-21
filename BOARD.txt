@@ -17,36 +17,37 @@
 
 
 +==================================================================================================+
-|  SECTION 01  //  THE THREE COMMANDS  —  all you actually need                                    |
+|  SECTION 01  //  THE THREE COMMANDS  --  all you actually need                                   |
 +==================================================================================================+
 
     # START  (once per boot)
-    ~/projects/cheatsheets/scripts/start-avalhla.sh
+    make ava-start
 
     # TALK  (anytime the container is up)
-    ollama run avalhla
+    make ai
 
     # STOP  (frees VRAM, model stays built)
-    systemctl --user stop ollama.service
+    make ava-stop
 
 
 +==================================================================================================+
-|  SECTION 02  //  AFTER REBOOT  —  one command starts the container                              |
+|  SECTION 02  //  AFTER REBOOT  --  one command starts the container                              |
 +==================================================================================================+
 
+    make ava-start
+
+    # Or manually:
     systemctl --user start ollama.service
     sleep 3
     curl -fsS http://127.0.0.1:11434/api/tags | jq -r '.models[].name'
 
-    # Or the wrapper script (does both)
-    ~/projects/cheatsheets/scripts/start-avalhla.sh
-
 
 +==================================================================================================+
-|  SECTION 03  //  TALK TO HER  —  chat modes                                                       |
+|  SECTION 03  //  TALK TO HER  --  chat modes                                                      |
 +==================================================================================================+
 
-    ollama run avalhla                          # interactive chat
+    make ai                                     # interactive via Makefile
+    ollama run avalhla                          # direct interactive
     ollama run avalhla "one-shot question"      # single question
 
     # Inside the >>> prompt:
@@ -59,7 +60,7 @@
 
 
 +==================================================================================================+
-|  SECTION 04  //  MEMORY TOOLS  —  persistent across sessions                                     |
+|  SECTION 04  //  MEMORY TOOLS  --  persistent across sessions                                    |
 +==================================================================================================+
 
     ai-chat                 persistent chat, saves to ~/.ai-memory/
@@ -70,19 +71,22 @@
 
 
 +==================================================================================================+
-|  SECTION 05  //  EDIT + REBUILD  —  only after touching persona/avalhla.Modelfile               |
+|  SECTION 05  //  EDIT + REBUILD  --  only after touching persona/avalhla.Modelfile              |
 +==================================================================================================+
 
     nano ~/projects/cheatsheets/persona/avalhla.Modelfile
 
-    cd ~/projects/cheatsheets
+    # Then rebuild:
+    make ava-rebuild
+
+    # Or manually:
     ollama create avalhla -f persona/avalhla.Modelfile
 
-    ollama run avalhla
+    make ai
 
 
 +==================================================================================================+
-|  SECTION 06  //  INSPECT + VERIFY  —  make sure she is who she says she is                       |
+|  SECTION 06  //  INSPECT + VERIFY  --  make sure she is who she says she is                      |
 +==================================================================================================+
 
     ollama list | grep avalhla                  # does she exist?
@@ -100,48 +104,49 @@
 
 
 +==================================================================================================+
-|  SECTION 07  //  CONTAINER STATUS  —  the server behind Ava                                       |
+|  SECTION 07  //  CONTAINER STATUS  --  the server behind Ava                                      |
 +==================================================================================================+
 
-    systemctl --user status ollama.service      is it running?
-    podman ps --format '{{.Names}} {{.Status}}'  container view
+    make ava-status                             # service + API + context
+    systemctl --user status ollama.service      # full systemd view
+    podman ps --format '{{.Names}} {{.Status}}' # container view
 
     # Auto-updates at midnight via:
     systemctl --user status podman-auto-update.timer
 
 
 +==================================================================================================+
-|  SECTION 08  //  TROUBLESHOOT  —  one fix per symptom                                            |
+|  SECTION 08  //  TROUBLESHOOT  --  one fix per symptom                                           |
 +==================================================================================================+
 
     SYMPTOM: "could not connect to ollama server"
-    FIX:     systemctl --user start ollama.service
+    FIX:     make ava-start
              sleep 3
              curl -fsS http://127.0.0.1:11434/api/tags
 
-    SYMPTOM: Service failed — port 11434 in use
+    SYMPTOM: Service failed -- port 11434 in use
     FIX:     ss -tlnp | grep 11434              find the squatter
              pkill -f "ollama serve"            kill stray host ollama
              systemctl --user restart ollama.service
 
     SYMPTOM: Wrong personality / wrong hardware info
-    FIX:     cd ~/projects/cheatsheets
-             ollama create avalhla -f persona/avalhla.Modelfile
+    FIX:     make ava-rebuild
 
     SYMPTOM: Slow generation
     FIX:     Close Firefox, OBS, games. Check nvidia-smi.
+             make ctx-8k                        (drop context tier)
 
     SYMPTOM: OOM / GPU spillover
-    FIX:     avastop. Close apps. avastart.
-             Or lower num_ctx to 8192 in Modelfile and rebuild.
+    FIX:     make ava-stop. Close apps. make ava-start.
+             make ctx-8k                        (drop context tier)
 
     SYMPTOM: Nuclear reset (model corrupted)
     FIX:     ollama rm avalhla
-             ollama create avalhla -f persona/avalhla.Modelfile
+             make ava-rebuild
 
 
 +==================================================================================================+
-|  SECTION 09  //  FILE LOCATIONS  —  where everything lives                                        |
+|  SECTION 09  //  FILE LOCATIONS  --  where everything lives                                       |
 +==================================================================================================+
 
     ~/projects/cheatsheets/persona/avalhla.Modelfile     her source of truth
@@ -154,12 +159,12 @@
     ~/.ollama/                                            models + logs
     ~/.ai-memory/                                         chat history
 
-    DO NOT put files in ~/.ollama/  — internal store, overwritten.
-    DO NOT edit ~/.ai-memory/ manually — script territory.
+    DO NOT put files in ~/.ollama/  -- internal store, overwritten.
+    DO NOT edit ~/.ai-memory/ manually -- script territory.
 
 
 +==================================================================================================+
-|  SECTION 10  //  SYSTEM UPDATES  —  YOU run these. Never topgrade.                                |
+|  SECTION 10  //  SYSTEM UPDATES  --  YOU run these. Never topgrade.                               |
 +==================================================================================================+
 
     ujust update                Bazzite one-shot update (OS + flatpak)
@@ -169,12 +174,13 @@
 
     RULES:
       topgrade must NOT run ujust   (check ~/.config/topgrade.toml)
+      topgrade must NOT run system  (disable = ["system", ...])
       fstrim runs on its own timer  (never inside topgrade)
       never sudo dnf install on host
 
 
 +==================================================================================================+
-|  SECTION 11  //  THE REUSABLE PROMPT  —  for future cheat sheets                                 |
+|  SECTION 11  //  THE REUSABLE PROMPT  --  for future cheat sheets                                |
 +==================================================================================================+
 
     Save to: ~/projects/cheatsheets/PROMPT_framed_cheatsheet.txt
@@ -205,6 +211,42 @@
     CHAT     = ollama run avalhla
     MEMORY   = ~/.ai-memory/
     UPDATES  = ujust update + auto-timer for container
+    DEV      = distrobox enter coding-lab
+
+
++==================================================================================================+
+|  SECTION 13  //  MAKE TARGETS  --  the fast shortcuts                                             |
++==================================================================================================+
+
+    make help           show all targets
+    make verify         pre-flight check
+    make fix            auto-repair safe issues
+    make ai             chat with Avalhla
+
+    make ava-start      start the container
+    make ava-stop       stop the container (frees VRAM)
+    make ava-status     container + API status
+    make ava-rebuild    rebuild from Modelfile
+    make ava-log        tail container log
+
+    make ctx-8k         switch to 8192 context
+    make ctx-16k        switch to 16384 context (default)
+    make ctx-32k        switch to 32768 context (heavy)
+
+    make health         full read-only system report
+    make update         check for OS + flatpak updates
+    make gpu            NVIDIA status
+    make audio          PipeWire sinks/sources
+    make net            network status
+    make logs           recent errors
+
+    make lab            enter coding-lab (Distrobox)
+    make tools          verify tool dependencies
+
+    make review         lint repo for banned patterns
+    make status         git status, short
+    make push           commit + push (asks for message)
+    make pull           pull latest
 
 
 +==================================================================================================+
