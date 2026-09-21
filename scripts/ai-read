@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# ai-read -- controlled read-only filesystem access for Avalhla
+# Usage:
+#   ai-read <path>              show file content (or dir listing)
+#   ai-read --ls <dir>          list a directory
+#   ai-read --grep <pat> <dir>  search pattern in dir
+#   ai-read --tree <dir>        tree view (2 levels)
+
+set -Eeuo pipefail
+
+WHITELIST_FILE="$HOME/.ai-memory/read-paths.txt"
+MAX_FILE_BYTES=50000
+
+# ── Whitelist check ──
+is_allowed() {
+    local target="$1"
+    local real
+    real=$(realpath -m "$target" 2>/dev/null || echo "$target")
+
+    if [[ ! -f "$WHITELIST_FILE" ]]; then
+        echo "X Whitelist not found: $WHITELIST_FILE"
+        return 1
+    fi
+
+    while IFS= read -r allowed; do
+        [[ -z "$allowed" ]] && continue
+        [[ "$allowed" =~ ^# ]] && continue
+        local allowed_real
+        allowed_real=$(realpath -m "$allowed" 2>/dev/null || echo "$allowed")
+        if [[ "$real" == "$allowed_real"* ]]; then
+            return 0
+        fi
+    done < "$WHITELIST_FILE"
+
+    echo "X Denied: $real is not in the whitelist"
+    echo "  Whitelist: $WHITELIST_FILE"
+    return 1
+}
+
+# ── File read ──
+do_read_file() {
+    local path="$1"
+
+    if [[ ! -e "$path" ]]; then
+        echo "X Not found: $path"
+        exit 1
+    fi
+
+    if [[ -d "$path" ]]; then
+        echo "(directory, listing contents)"
+        ls -la "$path"
+        return
+    fi
+
+    local size
+    size=$(stat -c '%s' "$path" 2>/dev/null || echo 0)
+
+    if [[ "$size" -gt "$MAX_FILE_BYTES" ]]; then
+        echo "(file too big: ${size} bytes, max ${MAX_FILE_BYTES})"
+        echo "(showing first 200 lines)"
+        head -n 200 "$path"
+        return
+    fi
+
+    if file --mime "$path" 2>/dev/null | grep -qE 'charset=(binary|unknown)'; then
+        echo "(binary file, ${size} bytes, not shown)"
+        return
+    fi
+
+    cat "$path"
+}
+
+# ── Dir listing ──
+do_ls() {
+    local dir="$1"
+    [[ -d "$dir" ]] || { echo "X Not a directory: $dir"; exit 1; }
+    ls -la "$dir"
+}
+
+# ── Grep ──
+do_grep() {
+    local pattern="$1"
+    local dir="$2"
+    [[ -d "$dir" ]] || { echo "X Not a directory: $dir"; exit 1; }
+    grep -rn --include="*.md" --include="*.txt" --include="*.sh" --include="*.toml" \
+        --include="*.conf" --include="*.yaml" --include="*.yml" --include="*.json" \
+        --include="*.Modelfile" --include="Modelfile" \
+        -e "$pattern" "$dir" 2>/dev/null | head -50 || echo "(no matches)"
+}
+
+# ── Tree ──
+do_tree() {
+    local dir="$1"
+    [[ -d "$dir" ]] || { echo "X Not a directory: $dir"; exit 1; }
+    if command -v tree >/dev/null 2>&1; then
+        tree -L 2 -a --noreport "$dir" 2>/dev/null | head -100
+    else
+        find "$dir" -maxdepth 2 -not -path '*/.git/*' 2>/dev/null | sort | head -100
+    fi
+}
+
+# ── Dispatch ──
+case "${1:-}" in
+    "")
+        echo "Usage:"
+        echo "  ai-read <path>              show file or list dir"
+        echo "  ai-read --ls <dir>          list directory"
+        echo "  ai-read --grep <pat> <dir>  search pattern"
+        echo "  ai-read --tree <dir>        tree view (2 levels)"
+        echo ""
+        echo "Whitelist: $WHITELIST_FILE"
+        exit 0
+        ;;
+    --ls)
+        target="${2:-}"; [[ -z "$target" ]] && { echo "need dir"; exit 1; }
+        is_allowed "$target" || exit 1
+        do_ls "$target"
+        ;;
+    --grep)
+        pat="${2:-}"; target="${3:-}"
+        [[ -z "$pat" || -z "$target" ]] && { echo "need pattern and dir"; exit 1; }
+        is_allowed "$target" || exit 1
+        do_grep "$pat" "$target"
+        ;;
+    --tree)
+        target="${2:-}"; [[ -z "$target" ]] && { echo "need dir"; exit 1; }
+        is_allowed "$target" || exit 1
+        do_tree "$target"
+        ;;
+    *)
+        target="$1"
+        is_allowed "$target" || exit 1
+        do_read_file "$target"
+        ;;
+esac
