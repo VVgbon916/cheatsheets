@@ -33,6 +33,8 @@ A minimal setup to run Avalhla on your machine, locally, no cloud, no API keys.
 - scripts/ai-with-memory          Persistent chat across sessions
 - scripts/ai-learn                Index files into her knowledge base
 - scripts/ai-remember             She reflects on recent sessions
+- scripts/ai-ask                  One-shot question with recent context
+- scripts/ai-progress             Show memory stats (sessions, KB, days)
 - AVALHLA_CHEATSHEET.txt          Full command reference
 - AVALHLA_COMMANDS.txt            Quick command list
 - PROMPT_framed_cheatsheet.txt    Reusable prompt template
