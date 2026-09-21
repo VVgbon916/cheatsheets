@@ -34,6 +34,8 @@ while true; do
 ${line}"
 
     TURN=0
+    SEEN_PATHS=""
+
     while [[ $TURN -lt $MAX_TURNS ]]; do
         TURN=$((TURN + 1))
 
@@ -42,13 +44,30 @@ ${line}"
             '{model: $m, prompt: $p, stream: false}')" \
             | jq -r '.response')
 
+        # Find the FIRST [READ: ...] in her reply
         if echo "$RESPONSE" | grep -q '\[READ: '; then
-            READ_PATH=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
+            READ_ARG=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
+
+            # Detect repeats -- if she asks the same thing, stop the loop
+            if echo "$SEEN_PATHS" | grep -qF "|${READ_ARG}|"; then
+                echo ""
+                echo "  [ava repeats: $READ_ARG -- stopping loop, asking her to answer]"
+                FULL_PROMPT="${FULL_PROMPT}
+
+[ASSISTANT]
+${RESPONSE}
+
+[SYSTEM]
+You already requested '${READ_ARG}'. Do NOT request it again. Answer the user with whatever information you have now, or explain that the file doesn't exist and stop."
+                continue
+            fi
+
+            SEEN_PATHS="${SEEN_PATHS}|${READ_ARG}|"
 
             echo ""
-            echo "  [ava reads: $READ_PATH]"
+            echo "  [ava reads: $READ_ARG]"
 
-            RESULT=$("$READ_BIN" "$READ_PATH" 2>&1 || echo "X read failed")
+            RESULT=$("$READ_BIN" "$READ_ARG" 2>&1 || echo "X read failed: $READ_ARG")
             RESULT=$(echo "$RESULT" | head -c 4000)
 
             FULL_PROMPT="${FULL_PROMPT}
@@ -56,16 +75,16 @@ ${line}"
 [ASSISTANT]
 ${RESPONSE}
 
-[READ RESULT: ${READ_PATH}]
+[READ RESULT: ${READ_ARG}]
 ${RESULT}
 [END READ]
 
 [SYSTEM]
-Continue your answer using the file content above."
-
+Continue your answer using the file content above. If the read failed, DO NOT retry the same path -- either try a different path once, or tell the user the file was not found and answer with what you have."
             continue
         fi
 
+        # No [READ:] tag -- final answer
         echo ""
         echo "$RESPONSE"
         echo ""
@@ -81,6 +100,6 @@ ${RESPONSE}
 
     if [[ $TURN -ge $MAX_TURNS ]]; then
         echo ""
-        echo "(max read turns reached -- stopping)"
+        echo "(max read turns reached)"
     fi
 done
