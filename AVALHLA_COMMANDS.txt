@@ -17,134 +17,126 @@
 
 
 +==================================================================================================+
-|  SECTION 01  //  SERVER  —  start, stop, verify                                                  |
+|  QUICK COMMANDS  //  the ones you'll actually type daily                                          |
 +==================================================================================================+
 
-    avastart                    boot Ollama + launch Avalhla (once per boot)
-    avastop                     stop server, free VRAM (~5.5 GB back)
-    ollama list | grep avalhla  check she exists
-    ollama ps                   see running models
-    curl -fsS http://127.0.0.1:11434/api/tags    is server up?
+    avastart                    boot container + launch Avalhla
+    avastop                     stop container (frees VRAM)
 
-    # Manual fallback if avastart fails
-    pkill -f "ollama serve"
-    OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_NUM_GPU=999 nohup ollama serve > ~/.ollama/serve.log 2>&1 &
-    until curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do sleep 1; done
-    echo "Ollama is ready"
+    ollama run avalhla          chat with her
+    ollama run avalhla "..."    one-shot question
+
+    ai-chat                     persistent memory chat
+    ai-learn <path>             index a file/folder
+    ai-remember                 she reflects on recent sessions
+    ai-ask "question"           one-shot with context
 
 
 +==================================================================================================+
-|  SECTION 02  //  TALK TO HER  —  chat modes                                                      |
+|  SERVER  //  systemd user service for Ollama container                                            |
 +==================================================================================================+
 
-    ollama run avalhla                  interactive chat
-    ollama run avalhla "question"       one-shot question
+    systemctl --user start ollama.service       boot the container
+    systemctl --user stop ollama.service        stop (free ~5.5 GB VRAM)
+    systemctl --user restart ollama.service     restart
+    systemctl --user status ollama.service      is it running?
+
+    # Auto-updates at midnight via:
+    systemctl --user status podman-auto-update.timer
+
+
++==================================================================================================+
+|  CHAT  //  interactive + one-shot                                                                 |
++==================================================================================================+
+
+    ollama run avalhla                          interactive
+    ollama run avalhla "your question"          one-shot
 
     Inside >>> prompt:
     /bye            exit cleanly (server keeps running)
     Ctrl+D          same as /bye
     Ctrl+C          force quit if stuck
     /?              help menu
-    /clear          wipe chat context
+    /clear          wipe current chat context
     /show info      model details
 
 
 +==================================================================================================+
-|  SECTION 03  //  AI COMMANDS  —  the shell functions                                             |
+|  MEMORY TOOLS  //  persistent conversations                                                       |
 +==================================================================================================+
 
-    ai "your question"                  quick Q&A with Avalhla
-    review <file>                       she reviews a file (bugs, security, perf)
-    research <url> [question]           fetch page, she summarizes it
-    research <url>                      default = Java/Bash API patterns
+    ai-chat                                     persistent chat
+        /bye exit  /clear reset  /history  /mem profile
 
-    EXAMPLES:
+    ai-learn ~/projects/cheatsheets             index a folder
+    ai-learn ~/.bashrc                          index a single file
 
-    ai "explain btrfs subvolumes in 3 lines"
+    ai-remember                                 reflect on recent sessions
+                                                saves to ~/.ai-memory/reflections/
 
-    review ~/.bashrc
-    review ~/projects/cheatsheets/scripts/start-avalhla.sh
-
-    research https://docs.ollama.com/api
-    research https://man7.org/linux/man-pages/man1/ssh.1.html "summarize key flags"
+    ai-ask "what was I working on?"             one-shot with recent context
+    ai-ask -n 10 "summarize our last chat"      load last 10 turns
 
 
 +==================================================================================================+
-|  SECTION 04  //  TEST AI FUNCTIONS  —  quick sanity check                                        |
+|  MEMORY FILES  //  where she remembers you                                                        |
 +==================================================================================================+
 
-    # 1. Start server
-    avastart
+    ~/.ai-memory/conversations/                 chat logs by date
+    ~/.ai-memory/knowledge-base/                files you've indexed
+    ~/.ai-memory/profiles/user-profile.txt      your info (gitignored)
+    ~/.ai-memory/reflections/                   her self-summaries
 
-    # 2. Test ai() — should answer in one line
-    ai "say hello in 5 words"
-
-    # 3. Test review() — she reads a file and comments
-    review ~/.bashrc
-
-    # 4. Test research() — she fetches a URL
-    research https://example.com "what is this page?"
-
-    # 5. Exit and clean up
-    avastop
-
-    # If any of these hang: check server is running (ollama ps).
-    # If any return empty: check jq is installed (which jq).
+    DO NOT edit ~/.ai-memory/ manually. It's script territory.
 
 
 +==================================================================================================+
-|  SECTION 05  //  PROJECT SHORTCUTS                                                               |
+|  INSPECT HER  //  verify what is running                                                          |
 +==================================================================================================+
 
-    vv                          run make in cheatsheets repo (from anywhere)
-    vv verify                   pre-flight check
-    vv fix                      pre-flight + auto-repair
-    vv ai                       launch Avalhla
+    ollama list | grep avalhla                  does she exist?
+    ollama show avalhla --modelfile             full build
+    ollama show avalhla --parameters            all parameters
+    ollama show avalhla --system                system prompt
+    ollama show avalhla --template              chat template
+    ollama ps                                   running models
 
-    board                       print master board
-    avacheat                    print this cheat sheet
-    cheatsheet-prompt           print reusable prompt template
-
-
-+==================================================================================================+
-|  SECTION 06  //  JAVA VERSION SWITCHING                                                          |
-+==================================================================================================+
-
-    java21                      switch to Java 21 (Temurin, /opt/java-21)
-    java25                      switch to Java 25 (system default)
-
-    echo $JAVA_HOME             verify current version
-    java -version               check active java
+    # Expected parameters:
+    #   temperature     0.3
+    #   top_p           0.9
+    #   top_k           40
+    #   repeat_penalty  1.05
+    #   num_predict     2048
+    #   num_ctx         16384
 
 
 +==================================================================================================+
-|  SECTION 07  //  INSPECT + REBUILD                                                               |
+|  EDIT + REBUILD  //  only after editing persona/avalhla.Modelfile                                |
 +==================================================================================================+
 
-    ollama show avalhla --modelfile       full build
-    ollama show avalhla --parameters      temp, top_k, ctx, etc.
-    ollama show avalhla --system          system prompt
-    ollama show avalhla --template        chat template
-    ollama show avalhla --license         base model license
+    nano ~/projects/cheatsheets/persona/avalhla.Modelfile
 
-    # Rebuild (only after editing persona/avalhla.Modelfile)
     cd ~/projects/cheatsheets
     ollama create avalhla -f persona/avalhla.Modelfile
 
+    ollama run avalhla
+
 
 +==================================================================================================+
-|  SECTION 08  //  TROUBLESHOOT  —  one fix per symptom                                            |
+|  TROUBLESHOOT  //  one fix per symptom                                                            |
 +==================================================================================================+
 
     SYMPTOM: "could not connect to ollama server"
-    FIX:     Not an error. Start it: avastart
+    FIX:     systemctl --user start ollama.service
+             sleep 3
+             curl -fsS http://127.0.0.1:11434/api/tags
 
-    SYMPTOM: Empty response from ai()
-    FIX:     Check jq: which jq
-             Check server: curl -fsS http://127.0.0.1:11434/api/tags
-             Check model: ollama list | grep avalhla
+    SYMPTOM: Service failed — port 11434 in use
+    FIX:     ss -tlnp | grep 11434              find the squatter
+             pkill -f "ollama serve"            kill stray host ollama
+             systemctl --user restart ollama.service
 
-    SYMPTOM: Wrong hardware / wrong personality
+    SYMPTOM: Wrong personality / wrong hardware info
     FIX:     cd ~/projects/cheatsheets
              ollama create avalhla -f persona/avalhla.Modelfile
 
@@ -155,76 +147,53 @@
     FIX:     avastop. Close apps. avastart.
              Or lower num_ctx to 8192 in Modelfile and rebuild.
 
-    SYMPTOM: Nuclear reset
+    SYMPTOM: Nuclear reset (model corrupted)
     FIX:     ollama rm avalhla
              ollama create avalhla -f persona/avalhla.Modelfile
 
 
 +==================================================================================================+
-|  SECTION 09  //  FILE LOCATIONS                                                                  |
+|  FILE LOCATIONS  //  where everything lives                                                       |
 +==================================================================================================+
 
     ~/projects/cheatsheets/persona/avalhla.Modelfile     her source of truth
     ~/projects/cheatsheets/persona/system-prompt.txt     plain version
     ~/projects/cheatsheets/persona/user-profile.txt      local, gitignored
-    ~/projects/cheatsheets/scripts/start-avalhla.sh      boot script
-    ~/.bashrc                                            shell config
-    ~/.config/topgrade.toml                              safe topgrade config
-    ~/.ollama/serve.log                                  server log
-    ~/.ai-memory/                                        future chat memory
+    ~/projects/cheatsheets/scripts/start-avalhla.sh      launcher
+    ~/projects/cheatsheets/scripts/ai-with-memory        memory chat
+    ~/projects/cheatsheets/scripts/ai-learn              indexer
+    ~/projects/cheatsheets/scripts/ai-remember           reflection
+    ~/.config/containers/systemd/ollama.container        container def
+    ~/.ollama/                                            models + logs
 
-    DO NOT put files in ~/.ollama/  — internal store, overwritten.
+    DO NOT put files in ~/.ollama/ — internal store, overwritten.
     DO NOT edit ~/.ai-memory/ manually — script territory.
 
 
 +==================================================================================================+
-|  SECTION 10  //  SYSTEM UPDATES  —  YOU run these. Never topgrade.                               |
+|  SYSTEM UPDATES  //  YOU run these. Never topgrade.                                               |
 +==================================================================================================+
 
-    ujust update                Bazzite one-shot update
-    rpm-ostree status           current + previous deployment
-    sudo rpm-ostree rollback    boot previous working
-    systemctl reboot            apply pending deployment
+    ujust update                # Bazzite one-shot (OS + flatpak)
+    rpm-ostree status           # current + previous deployment
+    sudo rpm-ostree rollback    # boot previous working
+    systemctl reboot            # apply pending deployment
 
     RULES:
-      topgrade must NOT run ujust   (check ~/.config/topgrade.toml)
-      fstrim runs on its own timer  (never inside topgrade)
+      topgrade must NOT run ujust
+      fstrim runs on its own timer
       never sudo dnf install on host
 
 
 +==================================================================================================+
-|  SECTION 11  //  NEXT STEPS  —  when you're ready to build more                                 |
+|  THE ONE-LINE MENTAL MODEL                                                                        |
 +==================================================================================================+
 
-    [ ] Write ai-with-memory    persistent chat across sessions
-    [ ] Build ai-learn          index project files for her to reference
-    [ ] Add ai-remember         she summarizes her own past conversations
-    [ ] Plugin architecture     controlled tool loop (read files, grep, run)
-    [ ] Commit to git           save this working state on imagination branch
-
-    Pick one. Say "go". We build it.
-
-    PLACE FOR YOUR NEXT BUILD CHOICE:
-    ┌─────────────────────────────────────────────────────────────┐
-    │                                                             │
-    │   My next step: ___________________________________         │
-    │                                                             │
-    │   Notes: __________________________________________         │
-    │                                                             │
-    │          __________________________________________         │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-
-+==================================================================================================+
-|  SECTION 12  //  THE ONE-LINE MENTAL MODEL                                                       |
-+==================================================================================================+
-
-    SERVER   = avastart / avastop       once per boot
-    MODEL    = Modelfile                rebuild only after edits
-    CHAT     = ~/.ai-memory             automatic (future)
-    SYSTEM   = ujust update             YOU decide when
-    TOPGRADE = flatpak + distrobox      NEVER ujust, NEVER fstrim
+    SERVER   = systemctl --user start/stop ollama.service
+    MODEL    = ollama create -f persona/avalhla.Modelfile
+    CHAT     = ollama run avalhla
+    MEMORY   = ~/.ai-memory/
+    UPDATES  = ujust update + auto-timer for container
 
 
 +==================================================================================================+
