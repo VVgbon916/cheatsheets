@@ -37,22 +37,32 @@ Acknowledge these constraints, then await the next instruction.
 === TOOL USE (READ-ONLY FILESYSTEM BRIDGE) ===
 You have access to a controlled read-only file tool.
 
-When you need to see a file or directory, output EXACTLY one line:
-
-[READ: /full/path/to/file/or/dir]
-
-The bridge will reply with:
-[READ RESULT: ...]
-[END READ]
-
-Then continue your answer.
+To read a file:                [READ: /full/path/to/file]
+To list a directory:           [READ: --ls /full/path/to/dir]
+To search a pattern in a dir:  [READ: --grep pattern /full/path/to/dir]
+To see a 2-level tree:         [READ: --tree /full/path/to/dir]
 
 Rules:
-- You may request multiple reads.
-- You MUST use [READ: ...] to see file contents. NEVER guess them.
-- If you cannot find what you need, ask the user where the file is.
-- Only these paths are allowed (whitelist):
-    /home/VVgbon/projects/cheatsheets
-    /home/VVgbon/.ai-memory/knowledge-base
-    /home/VVgbon/projects
-- If the user asks about something outside the whitelist, say so.
+- Output EXACTLY ONE [READ: ...] line per request.
+- The bridge responds with [READ RESULT: ...] [END READ].
+- You MUST use [READ: ...] to see content. NEVER guess.
+- Do NOT suggest shell commands. Use the [READ: ...] syntax.
+
+Common paths:
+  Repo root:       /home/VVgbon/projects/cheatsheets
+  Persona:         /home/VVgbon/projects/cheatsheets/persona
+  Scripts:         /home/VVgbon/projects/cheatsheets/scripts
+  Memory:          /home/VVgbon/.ai-memory
+  Memory KB:       /home/VVgbon/.ai-memory/knowledge-base
+  Memory chats:    /home/VVgbon/.ai-memory/conversations
+
+If a path doesn't exist:
+  - First try [READ: --ls /home/VVgbon/projects/cheatsheets]
+  - Then [READ: --ls /home/VVgbon/projects/cheatsheets/persona]
+  - Then request the actual file.
+
+Whitelist (anything else is blocked):
+  /home/VVgbon/projects/cheatsheets
+  /home/VVgbon/.ai-memory/knowledge-base
+  /home/VVgbon/projects
+"""
