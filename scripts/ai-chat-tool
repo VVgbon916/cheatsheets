@@ -5,11 +5,11 @@ set -Eeuo pipefail
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVALHLA_MODEL:-avalhla}"
 READ_BIN="$HOME/projects/cheatsheets/scripts/ai-read"
-MAX_TURNS=5
+MAX_TURNS=6
 
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     echo "X Ollama server not reachable"
-    echo "  Start it with: ollama serve  (or: systemctl --user start ollama.service)"
+    echo "  Start it: systemctl --user start ollama.service"
     exit 1
 fi
 
@@ -34,7 +34,7 @@ while true; do
 ${line}"
 
     TURN=0
-    SEEN_PATHS=""
+    FAILED_READS=""
 
     while [[ $TURN -lt $MAX_TURNS ]]; do
         TURN=$((TURN + 1))
@@ -44,31 +44,34 @@ ${line}"
             '{model: $m, prompt: $p, stream: false}')" \
             | jq -r '.response')
 
-        # Find the FIRST [READ: ...] in her reply
         if echo "$RESPONSE" | grep -q '\[READ: '; then
             READ_ARG=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
 
-            # Detect repeats -- if she asks the same thing, stop the loop
-            if echo "$SEEN_PATHS" | grep -qF "|${READ_ARG}|"; then
-                echo ""
-                echo "  [ava repeats: $READ_ARG -- stopping loop, asking her to answer]"
-                FULL_PROMPT="${FULL_PROMPT}
+            # Only block REPEATED FAILED reads. Allow repeated --ls and --grep.
+            if [[ "$READ_ARG" != --ls* && "$READ_ARG" != --grep* ]]; then
+                if echo "$FAILED_READS" | grep -qF "|${READ_ARG}|"; then
+                    echo ""
+                    echo "  [blocking repeat of failed read: $READ_ARG]"
+                    FULL_PROMPT="${FULL_PROMPT}
 
 [ASSISTANT]
 ${RESPONSE}
 
 [SYSTEM]
-You already requested '${READ_ARG}'. Do NOT request it again. Answer the user with whatever information you have now, or explain that the file doesn't exist and stop."
-                continue
+You already tried to read '${READ_ARG}' and it failed. Do NOT try it again. Answer the user with what you have, or explain that the file was not found."
+                    continue
+                fi
             fi
-
-            SEEN_PATHS="${SEEN_PATHS}|${READ_ARG}|"
 
             echo ""
             echo "  [ava reads: $READ_ARG]"
 
             RESULT=$("$READ_BIN" "$READ_ARG" 2>&1 || echo "X read failed: $READ_ARG")
             RESULT=$(echo "$RESULT" | head -c 4000)
+
+            if echo "$RESULT" | grep -qE "^X "; then
+                FAILED_READS="${FAILED_READS}|${READ_ARG}|"
+            fi
 
             FULL_PROMPT="${FULL_PROMPT}
 
@@ -80,11 +83,10 @@ ${RESULT}
 [END READ]
 
 [SYSTEM]
-Continue your answer using the file content above. If the read failed, DO NOT retry the same path -- either try a different path once, or tell the user the file was not found and answer with what you have."
+Continue your answer. If the read failed, DO NOT retry the same path. Use a directory listing or answer with what you have."
             continue
         fi
 
-        # No [READ:] tag -- final answer
         echo ""
         echo "$RESPONSE"
         echo ""
