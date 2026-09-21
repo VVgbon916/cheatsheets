@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# ai-chat-tool -- chat with Avalhla, allow her to read files via the bridge
+set -Eeuo pipefail
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVALHLA_MODEL:-avalhla}"
+READ_BIN="$HOME/projects/cheatsheets/scripts/ai-read"
+MAX_TURNS=5
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable"
+    echo "  Start it with: ollama serve  (or: systemctl --user start ollama.service)"
+    exit 1
+fi
+
+echo ""
+echo "ai-chat-tool -- Ava can request file reads"
+echo "  Commands: /bye exit  /clear reset"
+echo ""
+
+HISTORY=""
+
+while true; do
+    printf "\n\033[1;36myou >\033[0m "
+    IFS= read -r line || break
+
+    case "$line" in
+        /bye|/exit) break ;;
+        /clear) HISTORY=""; echo "  context cleared"; continue ;;
+        "") continue ;;
+    esac
+
+    FULL_PROMPT="${HISTORY}[USER]
+${line}"
+
+    TURN=0
+    while [[ $TURN -lt $MAX_TURNS ]]; do
+        TURN=$((TURN + 1))
+
+        RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
+            -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
+            '{model: $m, prompt: $p, stream: false}')" \
+            | jq -r '.response')
+
+        if echo "$RESPONSE" | grep -q '\[READ: '; then
+            READ_PATH=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
+
+            echo ""
+            echo "  [ava reads: $READ_PATH]"
+
+            RESULT=$("$READ_BIN" "$READ_PATH" 2>&1 || echo "X read failed")
+            RESULT=$(echo "$RESULT" | head -c 4000)
+
+            FULL_PROMPT="${FULL_PROMPT}
+
+[ASSISTANT]
+${RESPONSE}
+
+[READ RESULT: ${READ_PATH}]
+${RESULT}
+[END READ]
+
+[SYSTEM]
+Continue your answer using the file content above."
+
+            continue
+        fi
+
+        echo ""
+        echo "$RESPONSE"
+        echo ""
+        HISTORY="${HISTORY}[USER]
+${line}
+
+[ASSISTANT]
+${RESPONSE}
+
+"
+        break
+    done
+
+    if [[ $TURN -ge $MAX_TURNS ]]; then
+        echo ""
+        echo "(max read turns reached -- stopping)"
+    fi
+done
