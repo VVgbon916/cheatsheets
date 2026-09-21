@@ -1,0 +1,28 @@
+# Topgrade 17.11 config for Bazzite DX NVIDIA (VVgBazz)
+
+[misc]
+disable = [
+    "system",
+    "toolbx",
+    "antigravity",
+    "antigravity_cli",
+    "composer",
+    "gem",
+    "cargo",
+    "node",
+    "yarn",
+    "pip3",
+    "uv",
+    "poetry",
+    "conda",
+    "pipx",
+]
+
+[flatpak]
+use_sudo = false
+
+[distrobox]
+containers = ["coding-lab"]
+
+[containers]
+runtime = "podman"
