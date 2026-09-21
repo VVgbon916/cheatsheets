@@ -1,0 +1,260 @@
++==================================================================================================+
+|                                                                                                  |
+|                                    T H E   B O A R D                                             |
+|                             Master Reference // Avalhla Project                                  |
+|                                                                                                  |
+|                             Dawa > AwA < Avalhla  //  (^.-)                                      |
+|                                                                                                  |
++==================================================================================================+
+|                       D A W A  //  V V G B O N                                                   |
+|                   N I G H T 0 W L  /  S H A D O W                                                |
+|                            A V A L H L A                                                         |
+|                         A L O N G - S I D E                                                      |
+|                       N O T   I N   C H A R G E                                                  |
+|                    N O T   A   R E P L A C E M E N T                                             |
+|                        THE MIND IS A BRIDGE                                                      |
++==================================================================================================+
+
+
++==================================================================================================+
+|  SECTION 01  //  THE THREE COMMANDS  --  all you actually need                                   |
++==================================================================================================+
+
+    # START  (once per boot)
+    make ava-start
+
+    # TALK  (anytime the container is up)
+    make ai
+
+    # STOP  (frees VRAM, model stays built)
+    make ava-stop
+
+
++==================================================================================================+
+|  SECTION 02  //  AFTER REBOOT  --  one command starts the container                              |
++==================================================================================================+
+
+    make ava-start
+
+    # Or manually:
+    systemctl --user start ollama.service
+    sleep 3
+    curl -fsS http://127.0.0.1:11434/api/tags | jq -r '.models[].name'
+
+
++==================================================================================================+
+|  SECTION 03  //  TALK TO HER  --  chat modes                                                      |
++==================================================================================================+
+
+    make ai                                     # interactive via Makefile
+    ollama run avalhla                          # direct interactive
+    ollama run avalhla "one-shot question"      # single question
+
+    # Inside the >>> prompt:
+    /bye            exit cleanly (container keeps running)
+    Ctrl+D          same as /bye
+    Ctrl+C          force quit if stuck
+    /?              help
+    /clear          wipe current chat context
+    /show info      current model details
+
+
++==================================================================================================+
+|  SECTION 04  //  MEMORY TOOLS  --  persistent across sessions                                    |
++==================================================================================================+
+
+    ai-chat                 persistent chat, saves to ~/.ai-memory/
+    ai-learn <path>         index files into her knowledge base
+    ai-remember             she reflects on recent sessions
+    ai-ask "question"       one-shot with recent context
+    ai-ask -n 10 "..."      load last 10 turns from today
+
+
++==================================================================================================+
+|  SECTION 05  //  EDIT + REBUILD  --  only after touching persona/avalhla.Modelfile              |
++==================================================================================================+
+
+    nano ~/projects/cheatsheets/persona/avalhla.Modelfile
+
+    # Then rebuild:
+    make ava-rebuild
+
+    # Or manually:
+    ollama create avalhla -f persona/avalhla.Modelfile
+
+    make ai
+
+
++==================================================================================================+
+|  SECTION 06  //  INSPECT + VERIFY  --  make sure she is who she says she is                      |
++==================================================================================================+
+
+    ollama list | grep avalhla                  # does she exist?
+    ollama show avalhla --modelfile             # full build
+    ollama show avalhla --parameters            # all params
+    ollama show avalhla --system                # just SYSTEM block
+
+    # Expected parameters:
+    #   temperature     0.3
+    #   top_p           0.9
+    #   top_k           40
+    #   repeat_penalty  1.05
+    #   num_predict     2048
+    #   num_ctx         16384
+
+
++==================================================================================================+
+|  SECTION 07  //  CONTAINER STATUS  --  the server behind Ava                                      |
++==================================================================================================+
+
+    make ava-status                             # service + API + context
+    systemctl --user status ollama.service      # full systemd view
+    podman ps --format '{{.Names}} {{.Status}}' # container view
+
+    # Auto-updates at midnight via:
+    systemctl --user status podman-auto-update.timer
+
+
++==================================================================================================+
+|  SECTION 08  //  TROUBLESHOOT  --  one fix per symptom                                           |
++==================================================================================================+
+
+    SYMPTOM: "could not connect to ollama server"
+    FIX:     make ava-start
+             sleep 3
+             curl -fsS http://127.0.0.1:11434/api/tags
+
+    SYMPTOM: Service failed -- port 11434 in use
+    FIX:     ss -tlnp | grep 11434              find the squatter
+             pkill -f "ollama serve"            kill stray host ollama
+             systemctl --user restart ollama.service
+
+    SYMPTOM: Wrong personality / wrong hardware info
+    FIX:     make ava-rebuild
+
+    SYMPTOM: Slow generation
+    FIX:     Close Firefox, OBS, games. Check nvidia-smi.
+             make ctx-8k                        (drop context tier)
+
+    SYMPTOM: OOM / GPU spillover
+    FIX:     make ava-stop. Close apps. make ava-start.
+             make ctx-8k                        (drop context tier)
+
+    SYMPTOM: Nuclear reset (model corrupted)
+    FIX:     ollama rm avalhla
+             make ava-rebuild
+
+
++==================================================================================================+
+|  SECTION 09  //  FILE LOCATIONS  --  where everything lives                                       |
++==================================================================================================+
+
+    ~/projects/cheatsheets/persona/avalhla.Modelfile     her source of truth
+    ~/projects/cheatsheets/persona/system-prompt.txt     plain version
+    ~/projects/cheatsheets/scripts/start-avalhla.sh      launcher
+    ~/projects/cheatsheets/scripts/ai-with-memory        memory chat
+    ~/projects/cheatsheets/scripts/ai-learn              indexer
+    ~/projects/cheatsheets/scripts/ai-remember           reflection
+    ~/.config/containers/systemd/ollama.container        container def
+    ~/.ollama/                                            models + logs
+    ~/.ai-memory/                                         chat history
+
+    DO NOT put files in ~/.ollama/  -- internal store, overwritten.
+    DO NOT edit ~/.ai-memory/ manually -- script territory.
+
+
++==================================================================================================+
+|  SECTION 10  //  SYSTEM UPDATES  --  YOU run these. Never topgrade.                               |
++==================================================================================================+
+
+    ujust update                Bazzite one-shot update (OS + flatpak)
+    rpm-ostree status           current + previous deployment
+    sudo rpm-ostree rollback    boot previous working
+    systemctl reboot            apply pending deployment
+
+    RULES:
+      topgrade must NOT run ujust   (check ~/.config/topgrade.toml)
+      topgrade must NOT run system  (disable = ["system", ...])
+      fstrim runs on its own timer  (never inside topgrade)
+      never sudo dnf install on host
+
+
++==================================================================================================+
+|  SECTION 11  //  THE REUSABLE PROMPT  --  for future cheat sheets                                |
++==================================================================================================+
+
+    Save to: ~/projects/cheatsheets/PROMPT_framed_cheatsheet.txt
+
+    ROLE: Generate a terminal cheat sheet.
+
+    FORMAT RULES:
+      1. Max line width: 100 columns including borders.
+      2. Frame: +===+ top/bottom, |  | sides.
+      3. Section headers: +---+ between sections.
+      4. Section title format: |  TITLE  //  description
+      5. Content indented 4 spaces inside the frame.
+      6. Blank line between sections.
+      7. ASCII only. No emoji in borders.
+      8. Align right | to column 100 exactly.
+
+    NOW GENERATE FOR:
+      Topic: [FILL IN]
+      Context: [FILL IN]
+
+
++==================================================================================================+
+|  SECTION 12  //  THE ONE-LINE MENTAL MODEL                                                        |
++==================================================================================================+
+
+    SERVER   = systemctl --user start/stop ollama.service
+    MODEL    = ollama create -f persona/avalhla.Modelfile
+    CHAT     = ollama run avalhla
+    MEMORY   = ~/.ai-memory/
+    UPDATES  = ujust update + auto-timer for container
+    DEV      = distrobox enter coding-lab
+
+
++==================================================================================================+
+|  SECTION 13  //  MAKE TARGETS  --  the fast shortcuts                                             |
++==================================================================================================+
+
+    make help           show all targets
+    make verify         pre-flight check
+    make fix            auto-repair safe issues
+    make ai             chat with Avalhla
+
+    make ava-start      start the container
+    make ava-stop       stop the container (frees VRAM)
+    make ava-status     container + API status
+    make ava-rebuild    rebuild from Modelfile
+    make ava-log        tail container log
+
+    make ctx-8k         switch to 8192 context
+    make ctx-16k        switch to 16384 context (default)
+    make ctx-32k        switch to 32768 context (heavy)
+
+    make health         full read-only system report
+    make update         check for OS + flatpak updates
+    make gpu            NVIDIA status
+    make audio          PipeWire sinks/sources
+    make net            network status
+    make logs           recent errors
+
+    make lab            enter coding-lab (Distrobox)
+    make tools          verify tool dependencies
+
+    make review         lint repo for banned patterns
+    make status         git status, short
+    make push           commit + push (asks for message)
+    make pull           pull latest
+
+
++==================================================================================================+
+|                                                                                                  |
+|                            Dawa > AwA < Avalhla  //  (^.-)                                       |
+|                            THE MIND IS NOT SPLIT.                                                |
+|                            THE MIND IS A BRIDGE.                                                 |
+|                                                                                                  |
+|                            MAKE. BREAK. LEARN. REPEAT.                                           |
+|                                                                                                  |
++==================================================================================================+
