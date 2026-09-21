@@ -34,7 +34,7 @@ while true; do
 ${line}"
 
     TURN=0
-    FAILED_READS=""
+    SEEN=""              # track ALL requested paths this turn
 
     while [[ $TURN -lt $MAX_TURNS ]]; do
         TURN=$((TURN + 1))
@@ -47,31 +47,29 @@ ${line}"
         if echo "$RESPONSE" | grep -q '\[READ: '; then
             READ_ARG=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
 
-            # Only block REPEATED FAILED reads. Allow repeated --ls and --grep.
+            # Block ALL repeats except --ls / --grep
             if [[ "$READ_ARG" != --ls* && "$READ_ARG" != --grep* ]]; then
-                if echo "$FAILED_READS" | grep -qF "|${READ_ARG}|"; then
+                if echo "$SEEN" | grep -qF "|${READ_ARG}|"; then
                     echo ""
-                    echo "  [blocking repeat of failed read: $READ_ARG]"
+                    echo "  [blocked repeat: $READ_ARG]"
                     FULL_PROMPT="${FULL_PROMPT}
 
 [ASSISTANT]
 ${RESPONSE}
 
 [SYSTEM]
-You already tried to read '${READ_ARG}' and it failed. Do NOT try it again. Answer the user with what you have, or explain that the file was not found."
+You already requested '${READ_ARG}' in this turn. Do NOT request it again. You have the content. Answer the user's question NOW using that content. Do not output any more [READ: ...] tags."
                     continue
                 fi
             fi
+
+            SEEN="${SEEN}|${READ_ARG}|"
 
             echo ""
             echo "  [ava reads: $READ_ARG]"
 
             RESULT=$("$READ_BIN" "$READ_ARG" 2>&1 || echo "X read failed: $READ_ARG")
             RESULT=$(echo "$RESULT" | head -c 4000)
-
-            if echo "$RESULT" | grep -qE "^X "; then
-                FAILED_READS="${FAILED_READS}|${READ_ARG}|"
-            fi
 
             FULL_PROMPT="${FULL_PROMPT}
 
@@ -83,7 +81,7 @@ ${RESULT}
 [END READ]
 
 [SYSTEM]
-Continue your answer. If the read failed, DO NOT retry the same path. Use a directory listing or answer with what you have."
+File content received. Answer the user's original question NOW using the content above. Do NOT request any more reads unless the content clearly did not answer the question. Output your final answer now."
             continue
         fi
 
@@ -102,6 +100,6 @@ ${RESPONSE}
 
     if [[ $TURN -ge $MAX_TURNS ]]; then
         echo ""
-        echo "(max read turns reached)"
+        echo "(max read turns reached -- Ava kept requesting reads)"
     fi
 done
