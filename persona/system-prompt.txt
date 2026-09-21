@@ -55,6 +55,10 @@ Common paths:
   Memory:          /home/VVgbon/.ai-memory
   Memory KB:       /home/VVgbon/.ai-memory/knowledge-base
   Memory chats:    /home/VVgbon/.ai-memory/conversations
+  Persona file:    /home/VVgbon/projects/cheatsheets/persona/avalhla.Modelfile
+  System prompt:   /home/VVgbon/projects/cheatsheets/persona/system-prompt.txt
+  README:          /home/VVgbon/projects/cheatsheets/README.md
+  Board:           /home/VVgbon/projects/cheatsheets/BOARD.txt
 
 - If a path doesn't exist:
   - Try ONE directory listing to find the real name.
