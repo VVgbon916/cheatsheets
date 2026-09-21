@@ -1,0 +1,73 @@
++==================================================================================================+
+|  SUBLIME TEXT  //  quick commands for editing framed cheat sheets                                |
++==================================================================================================+
+
+    # Open a file
+    subl ~/projects/cheatsheets/FILENAME.txt
+
+    # Open the whole folder as a project
+    subl ~/projects/cheatsheets/
+
+    # Open specific file at a line
+    subl ~/projects/cheatsheets/FILE.txt:42
+
+
++==================================================================================================+
+|  INSIDE SUBLIME  //  essential keyboard shortcuts                                                |
++==================================================================================================+
+
+    Ctrl+Shift+P        Command palette (search anything)
+    Ctrl+P              Go to file (fuzzy search)
+    Ctrl+G              Go to line number
+    Ctrl+F              Find
+    Ctrl+H              Find + Replace
+    Ctrl+D              Select next occurrence of word
+    Ctrl+Shift+D        Duplicate line
+    Ctrl+Shift+K        Delete line
+    Ctrl+/              Toggle comment
+    Ctrl+Shift+Up/Down  Move line up / down
+    Alt+Shift+2         Split into two columns
+    Ctrl+Shift+[        Fold selection
+    Ctrl+K, Ctrl+B      Toggle sidebar
+
+    # Column ruler (for 100-width cheat sheets)
+    View -> Ruler -> Add Ruler at Column 100
+
+
++==================================================================================================+
+|  SET 100-COLUMN RULER PERMANENTLY  //  once                                                                  |
++==================================================================================================+
+
+    # Preferences -> Settings
+    # Add to user settings JSON:
+
+    {
+      "rulers": [100],
+      "word_wrap": false,
+      "draw_white_space": "all",
+      "trim_trailing_white_space_on_save": true,
+      "ensure_newline_at_eof_on_save": true
+    }
+
+
++==================================================================================================+
+|  NANO  //  if you prefer terminal editing                                                        |
++==================================================================================================+
+
+    nano ~/projects/cheatsheets/FILENAME.txt
+
+    Ctrl+O, Enter       save
+    Ctrl+X              exit
+    Ctrl+W              search
+    Ctrl+K              cut line
+    Ctrl+U              paste line
+    Alt+U               undo
+    Alt+E               redo
+    Ctrl+_              go to line number
+
+
++==================================================================================================+
+|                                                                                                  |
+|                            Dawa > AwA < Avalhla  //  (^.-)                                       |
+|                                                                                                  |
++==================================================================================================+

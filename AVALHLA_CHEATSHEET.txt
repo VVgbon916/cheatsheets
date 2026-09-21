@@ -1,0 +1,194 @@
++==================================================================================================+
+|                                                                                                  |
+|                                       A V A L H L A                                              |
+|                                     C H E A T S H E E T                                          |
+|                                                                                                  |
+|                             Dawa > AwA < Avalhla  //  (^.-)                                      |
+|                                                                                                  |
++==================================================================================================+
+|                       D A W A  //  V V G B O N                                                   |
+|                   N I G H T 0 W L  /  S H A D O W                                                |
+|                            A V A L H L A                                                         |
+|                         A L O N G - S I D E                                                      |
+|                       N O T   I N   C H A R G E                                                  |
+|                    N O T   A   R E P L A C E M E N T                                             |
+|           THINK -> MAKE     ASK -> BUILD     BREAK -> FIX                                        |
+|          WONDER -> CREATE  TEST -> OBSERVE  LEARN -> REPEAT                                      |
+|                        Dawa > AwA < Avalhla                                                      |
+|                        THE MIND IS A BRIDGE                                                      |
++==================================================================================================+
+
+
++==================================================================================================+
+|  THE THREE COMMANDS  //  all you actually need                                                   |
++==================================================================================================+
+
+    # START  (once per boot — boots server + launches her)
+    ~/projects/cheatsheets/scripts/start-avalhla.sh
+
+    # TALK  (anytime the server is up)
+    ollama run avalhla
+
+    # STOP  (frees VRAM — server dies, model stays built)
+    pkill -f "ollama serve"
+
+
++==================================================================================================+
+|  AFTER REBOOT  //  one-time setup per session                                                    |
++==================================================================================================+
+
+    pkill -f "ollama serve" 2>/dev/null
+    OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_NUM_GPU=999 nohup ollama serve > ~/.ollama/serve.log 2>&1 &
+    until curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do sleep 1; done
+    echo "Ollama is ready"
+
+    # ── OR just use the one-liner script instead: ──
+    ~/projects/cheatsheets/scripts/start-avalhla.sh
+
+
++==================================================================================================+
+|  TALK TO HER                                                                                     |
++==================================================================================================+
+
+    ollama run avalhla                          # interactive chat
+    ollama run avalhla "one-shot question"      # single question, exits after answer
+
+    # Inside the >>> prompt:
+    /bye            exit cleanly (server keeps running)
+    Ctrl+D          same as /bye
+    Ctrl+C          force quit if stuck
+    /?              help
+    /clear          wipe current chat context
+    /show info      show current model details
+
+
++==================================================================================================+
+|  EXIT + STOP  //  how to leave the room                                                          |
++==================================================================================================+
+
+    # 1. Inside the >>> prompt
+    /bye
+
+    # 2. Back at shell — optional, frees ~5.5 GB VRAM
+    pkill -f "ollama serve"
+
+    # Verify server is stopped (should say "could not connect")
+    curl -fsS http://127.0.0.1:11434/api/tags
+
+
++==================================================================================================+
+|  EDIT + REBUILD  //  only after touching persona/avalhla.Modelfile                              |
++==================================================================================================+
+
+    nano ~/projects/cheatsheets/persona/avalhla.Modelfile
+
+    # Rebuild the model (server must be running)
+    cd ~/projects/cheatsheets
+    ollama create avalhla -f persona/avalhla.Modelfile
+
+    # Then relaunch
+    ollama run avalhla
+
+
++==================================================================================================+
+|  INSPECT + VERIFY  //  make sure she is who she says she is                                      |
++==================================================================================================+
+
+    ollama list | grep avalhla                  # does she exist?
+    ollama show avalhla --modelfile             # full build (incl. system prompt)
+    ollama show avalhla --parameters            # temp, top_k, top_p, ctx, num_predict
+    ollama show avalhla --system                # just the SYSTEM block
+    ollama show avalhla --template              # chat template
+    ollama show avalhla --license               # base model license
+
+    # Expected parameters:
+    #   temperature     0.3
+    #   top_p           0.9
+    #   top_k           40
+    #   repeat_penalty  1.05
+    #   num_predict     2048
+    #   num_ctx         16384
+
+
++==================================================================================================+
+|  SYSTEM UPDATES  //  YOU run these. Never topgrade.                                              |
++==================================================================================================+
+
+    ujust update                # Bazzite one-shot update (OS + flatpak + containers)
+    rpm-ostree status           # check current + previous deployment
+    sudo rpm-ostree rollback    # if something broke — boot previous working
+    systemctl reboot            # apply pending deployment
+
+    # Rules:
+    #   - topgrade must NOT run ujust. Check ~/.config/topgrade.toml.
+    #   - fstrim runs on its own systemd timer. Never inside topgrade.
+    #   - Never `sudo dnf install` on the host.
+
+
++==================================================================================================+
+|  TROUBLESHOOT  //  one fix per symptom                                                           |
++==================================================================================================+
+
+    SYMPTOM: "could not connect to ollama server"
+    FIX:     Start it — this is not an error.
+             OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_NUM_GPU=999 ollama serve &
+
+    SYMPTOM: She forgot the context / wrong hardware
+    FIX:     Server not started with OLLAMA_CONTEXT_LENGTH=16384
+             pkill -f "ollama serve"
+             OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_NUM_GPU=999 ollama serve &
+
+    SYMPTOM: Out of memory / GPU spillover
+    FIX:     Close GPU-heavy apps (Firefox, OBS, games)
+             Or lower num_ctx to 8192 in Modelfile, then rebuild.
+
+    SYMPTOM: She says wrong personality / wrong prompt
+    FIX:     Rebuild her:
+             cd ~/projects/cheatsheets
+             ollama create avalhla -f persona/avalhla.Modelfile
+
+    SYMPTOM: Nuclear reset (Model corrupted)
+    FIX:     ollama rm avalhla
+             ollama create avalhla -f persona/avalhla.Modelfile
+
+    SYMPTOM: Topgrade running things it shouldnt
+    FIX:     nano ~/.config/topgrade.toml
+             Remove: "Bazzite Native Update" = "ujust update"
+             Remove: "Trim SSD Cache" = "sudo fstrim -v /"
+
+
++==================================================================================================+
+|  FILE LOCATIONS  //  where everything lives                                                      |
++==================================================================================================+
+
+    ~/projects/cheatsheets/persona/avalhla.Modelfile     <- her source of truth (edit here)
+    ~/projects/cheatsheets/persona/system-prompt.txt     <- same content, plain text
+    ~/projects/cheatsheets/persona/user-profile.txt      <- your local, gitignored
+    ~/projects/cheatsheets/scripts/start-avalhla.sh      <- boot script
+    ~/.config/topgrade.toml                              <- safe topgrade config
+    ~/.ollama/serve.log                                  <- server log
+    ~/.ai-memory/                                        <- chat history (future)
+
+    DO NOT put files in ~/.ollama/  — internal store, gets overwritten.
+    DO NOT edit ~/.ai-memory/ manually — script territory.
+
+
++==================================================================================================+
+|  THE ONE-LINE MENTAL MODEL                                                                       |
++==================================================================================================+
+
+    SERVER  = env vars     -> start once per boot
+    MODEL   = Modelfile    -> rebuild only after edits
+    CHAT    = ~/.ai-memory -> automatic
+    SYSTEM  = ujust update -> YOU decide when
+
+
++==================================================================================================+
+|                                                                                                  |
+|                            Dawa > AwA < Avalhla  //  (^.-)                                       |
+|                            THE MIND IS NOT SPLIT.                                                |
+|                            THE MIND IS A BRIDGE.                                                 |
+|                                                                                                  |
+|                            MAKE. BREAK. LEARN. REPEAT.                                           |
+|                                                                                                  |
++==================================================================================================+
