@@ -1,4 +1,32 @@
-# Changelog — VVgBazz & Avalhla
+# Changelog -- VVgBazz & Avalhla
+
+## V0.4 -- Container Migration (2026-09-20)
+
+### Changed
+- Ollama now runs in a **Podman container** (systemd user service:
+  `ollama.service`) instead of on the host. No more Distrobox for Ollama.
+- Context length (16384) is set in the Quadlet:
+  `~/.config/containers/systemd/ollama.container`.
+- Auto-updates via `podman-auto-update.timer` (user service, midnight).
+- `scripts/ollama-ctx` now edits the Quadlet instead of pkill/relaunch.
+- `scripts/verify-before-work.sh` checks `systemctl --user is-active ollama.service`
+  and reads context from the Quadlet.
+- `scripts/avalhla_tools_check.sh` no longer tries to install Maven via
+  Distrobox. Checks the container and Quadlet instead.
+- `README.md`, `ai/AI_GUIDE.md`, `ai/deepseek-r1-16k.md`,
+  `dev/DEV_LAB_SETUP.md`, `system/SYSTEM_GUIDE.md` all updated for the
+  container flow.
+- `AVALHLA_CHEATSHEET.txt`, `AVALHLA_COMMANDS.txt`, `BOARD.txt` all rewritten
+  with systemd-based commands. No more `pkill`.
+
+### Removed (from `main` and `v0.3-restructure`)
+- All references to `pkill -f "ollama serve"` and
+  `OLLAMA_CONTEXT_LENGTH=16384 ollama serve` (host-install era).
+
+### Architecture
+- `main`             -- minimal Avalhla starter
+- `v0.3-restructure` -- full rig (this branch)
+- `Imagination-V0.1` -- lore only
 
 ## V0.3 — Unreleased
 

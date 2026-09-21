@@ -1,124 +1,115 @@
-# 🐋 DeepSeek-R1:14b @ 16K / 32K context — VERIFIED RECIPE
-For `VVgBazz` · RTX 3060 12GB · Bazzite DX NVIDIA 44
+# DeepSeek-R1 14B -- 16K / 32K Context (Container Flow)
 
-## ⚠ The single most-common mistake
+For: VVgBazz / RTX 3060 12GB / Bazzite DX NVIDIA 44
+Historical note: the old host-install recipe used pkill and env vars
+at serve time. That flow is gone. In the current setup, context is set
+in the Quadlet.
 
-**`OLLAMA_CONTEXT_LENGTH` is an environment variable on `ollama serve`,
-NOT a flag on `ollama run`.** If the server is already running with a
-different context, setting the env var before `ollama run` does nothing.
+## The Rule (Still True)
 
-**Your own log proves this:** `ollama.log` shows `-c 4096`, not `-c 16384`.
+OLLAMA_CONTEXT_LENGTH is an environment variable on the Ollama process,
+not a flag on "ollama run".
 
----
+In the container world, you set it in:
+  ~/.config/containers/systemd/ollama.container
 
-## ✅ The correct sequence (16K — daily driver)
+    Environment=OLLAMA_CONTEXT_LENGTH=16384
+    Environment=OLLAMA_NUM_GPU=999
 
-```bash
-pkill -f "ollama serve" || true
-sleep 1
+Then:
+  systemctl --user daemon-reload
+  systemctl --user restart ollama.service
 
-OLLAMA_CONTEXT_LENGTH=16384 nohup ollama serve > ~/.ollama/serve.log 2>&1 &
+The helper script does this for you:
+  ollama-ctx 16384
 
-until curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; do sleep 1; done
-echo "Ollama ready"
+## Verify
 
-cd ~/ollama-agent
-ollama create deepseek-r1-tool-14b-16k -f Modelfile
-ollama run deepseek-r1-tool-14b-16k
+    systemctl --user show ollama.service --property=Environment | tr ' ' '\n' | grep OLLAMA
 
-✅ Verify
-bash
+    # Or check the API after starting a model
+    ollama run avalhla "say hi"
 
-pgrep -af llama-server | grep -o '\-c [0-9]*'
-# Want: -c 16384
-# Got:  -c 4096  → env var didn't apply
+    # Look at the process arguments
+    pgrep -af llama-server | grep -o '\-c [0-9]*' | head -1
+    # Expected: -c 16384
 
-Or use make ctx-16k / make ctx-32k.
-📊 VRAM budget on RTX 3060 12GB
+## VRAM Budget on RTX 3060 12GB (DeepSeek-R1 14B Q4_K_M)
 
-Model: DeepSeek-R1:14b Q4_K_M ≈ 8.4 GB weights.
-Context KV cache        Weights Total   Verdict
-4096    ~0.75 G 8.4 G   ~9.2 G  default, small
-8192    ~1.5 G  8.4 G   ~9.9 G  comfy, small
-16384   ~3 G    8.4 G   ~11.4 G ✅ recommended
-32768   ~6 G    8.4 G   ~14.4 G ⚠ tight but fits if KV spills to CPU
-65536   ~12 G   8.4 G   ~20.4 G ❌ will spill, very slow
-⚠ On the 32768 row
+    Weights       ~8.4 GB
+    Desktop       ~0.6 GB
+    Total usable  ~11.4 GB
+    Leaves        ~3.0 GB for KV cache
 
-    3060 has 12 GB VRAM
+Context   KV cache   Total      Verdict
+-------   --------   -------    -------------------------------------
+4096      ~0.75 GB   ~9.2 GB    default, small
+8192      ~1.5 GB    ~9.9 GB    comfy
+16384     ~3.0 GB    ~11.4 GB   recommended
+32768     ~6.0 GB    ~14.4 GB   tight; KV spills to system RAM
+65536     ~12 GB     ~20.4 GB   way over budget, do not try
 
-    Desktop + browser overhead: ~0.6 GB
+At 32K: model stays on GPU, but KV partially spills to RAM.
+Generation drops from ~1.7 t/s to ~0.5-0.9 t/s. Fine for one-off long
+prompts. Painful as a daily driver.
 
-    Available: ~11.4 GB
+## Model Comparison (RTX 3060 12GB)
 
-    Model weights: 8.4 GB
+| Model                 | VRAM     | Speed      | Notes                        |
+|-----------------------|----------|------------|------------------------------|
+| qwen2.5-coder:7b      | ~5.5 GB  | 60+ t/s    | Daily driver, base for Ava   |
+| qwen2.5-coder:14b     | ~9.5 GB  | 30-40 t/s  | Complex architecture         |
+| deepseek-r1:14b       | ~8.4 GB  | 1.5-1.7 t/s| Slow reasoning, use rarely   |
 
-    Leaves: ~3.0 GB for KV cache
+Recommendation: stick to qwen2.5-coder:7b for Ava. DeepSeek-R1 is for
+one-off reasoning tasks where the slowness is worth it.
 
-    Need for 32K: ~6 GB
+## How To Change Context
 
-    Over budget by ~3 GB → KV spills to system RAM
+    # Show current
+    ollama-ctx
 
-Effect: model stays on GPU, KV partially on GPU+RAM. Prompt eval stays
-fast (~8-15 tok/s), but token generation drops from ~1.7 tok/s to ~0.5-0.9
-tok/s once KV spills. Fine for one-off long jobs, painful as a daily driver.
-How to run 32K
+    # Change to 8192 (faster, less memory)
+    ollama-ctx 8192
 
-Option A — accept the slowdown:
-bash
+    # Change to 16384 (recommended)
+    ollama-ctx 16384
 
-make ctx-32k
+    # Change to 32768 (accept slowdown)
+    ollama-ctx 32768
 
-Option B — free VRAM aggressively first:
-bash
+The helper edits the Quadlet, reloads systemd, restarts the container.
 
-pkill -f steamwebhelper
-pkill -f firefox
-pkill -f obs
-make ctx-32k
+## If It OOMs Or Falls Back To CPU
 
-Option C — use a smaller model for long context:
-bash
+Symptoms in the container log:
 
-ollama pull qwen2.5-coder:7b     # ~4.7 GB, fits 32K easily
+    podman logs ollama | tail -50
 
-VRAM recommendation
-Use case        Context
-Daily coding, quick questions   16384
-Long single-shot analysis (repo, big doc)       32768
-Multi-turn agent with tool calls        16384
-Chained "read this, refactor this"      32768 (accept slow)
-If it OOMs or falls back to CPU
-
-Symptoms in ~/.ollama/serve.log:
+Look for:
 
     "disabling mmap" with reason=cpu
-
     "offloaded 0/N layers to GPU"
-
-    Time-to-first-token > 60 s
+    time-to-first-token > 60s
 
 Fixes in order:
 
-    Close GPU apps
+  1. Close GPU apps (Firefox, OBS, games).
+  2. Drop context one tier: ollama-ctx 8192
+  3. Restart: systemctl --user restart ollama.service
+  4. Switch to a smaller model: ollama run qwen2.5-coder:7b
 
-    Drop context one tier
+## Historical Note
 
-    ollama stop all models, reload just this one
+The pre-container recipe (which this file used to teach) was:
 
-    Switch to qwen2.5-coder:7b
+    pkill -f "ollama serve"
+    OLLAMA_CONTEXT_LENGTH=16384 nohup ollama serve > ~/.ollama/serve.log 2>&1 &
 
-Reference numbers (from your logs)
+That is no longer correct. Do not use it. Ollama runs in the container
+managed by systemd.
 
-Your ollama.log (Sept 11) shows 14B Q4_K_M at 4096 context:
+## Signature
 
-    Load: 26.9 s
-
-    Prompt eval: 8.71 tok/s
-
-    Generation: 1.72 tok/s
-
-    VRAM used: ~8.7 GB
-
-At 16384 expect: load ~30 s, gen ~1.5-1.7 tok/s.
-At 32768 expect: load ~45-60 s, gen ~0.7-1.0 tok/s.
+    Dawa > AwA < Avalhla.
+    (^.-)

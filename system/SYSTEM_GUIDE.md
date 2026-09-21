@@ -77,7 +77,7 @@ sudo dnf install -y maven shellcheck libxml2 ffmpeg-free git jq curl ripgrep fzf
 ```
 
 To use a CLI tool like `cava` from the host afterward, see the export fix in
-[`/ai/AI_GUIDE.md`](../ai/AI_GUIDE.md#4-the-developer-lab-distrobox) — it needs
+`/ai/AI_GUIDE.md` and `/dev/DEV_LAB_SETUP.md` — it needs
 `distrobox-export --bin`, not `--app`.
 
 ---
@@ -185,9 +185,14 @@ sudo rpm-ostree install -y coolercontrol liquidctl mangohud topgrade gh
 # 3. Curated Flatpaks — see /dev/DEV_LAB_SETUP.md and README.md Quick Start
 #    for the full list; omitted here to avoid a 4th copy of the same list.
 
-# 4. Local AI host daemon
-curl -fsSL https://ollama.com/install.sh | sh
-sudo systemctl enable --now ollama
+# 4. Local AI container (Podman, systemd user service)
+# See ~/.config/containers/systemd/ollama.container and ai/AI_GUIDE.md.
+# Ollama runs in a Podman container, NOT on the host and NOT in Distrobox.
+# No curl install script. No systemctl enable --now ollama.
+# The container definition already exists on a configured system:
+#
+#     systemctl --user start ollama.service
+#     systemctl --user status ollama.service
 
 # 5. Distrobox dev lab — see /dev/DEV_LAB_SETUP.md for the verified
 #    (non-broken) package list.

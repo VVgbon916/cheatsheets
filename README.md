@@ -1,66 +1,77 @@
-# 🛡️ VVgBazz & Avalhla V0.3 — System & AI Ecosystem
+# Avalhla -- Full Rig (v0.3-restructure)
 
-> **Operator:** Dawa (`VVgbon@VVgBazz`) | **AI Companion:** Avalhla (Ava)
-> **Base Platform:** Bazzite DX NVIDIA 44 (Fedora 44 Atomic / KDE Wayland)
-> **Repository:** [VVgbon916/cheatsheets](https://github.com/VVgbon916/cheatsheets)
+> Operator: Dawa (VVgbon@VVgBazz)
+> AI Companion: Avalhla (Ava)
+> Base Platform: Bazzite DX NVIDIA 44 (Fedora Atomic / KDE Wayland)
+> Repository: https://github.com/VVgbon916/cheatsheets
 
-See [`CHANGELOG.md`](./CHANGELOG.md) for the full list of what changed and why.
+This branch contains the full rig: the persona, all tools, all boards,
+all guides. It is the daily driver.
+
+## Three-Branch Structure
+
+| Branch | Purpose |
+|---|---|
+| main              | Minimal Avalhla starter (new user) |
+| v0.3-restructure  | This branch -- full rig (tools, boards, guides) |
+| Imagination-V0.1  | Lore only (Canon, Avatars, story, comics) |
+
+## How Ollama Runs
+
+Ollama runs in a Podman container, managed by a systemd user service.
+
+| Component | Location |
+|---|---|
+| Container definition | ~/.config/containers/systemd/ollama.container |
+| systemd service      | ollama.service (user) |
+| Models               | Podman named volume "ollama" |
+| Auto-update timer    | podman-auto-update.timer |
+
+No Distrobox for Ollama. No pkill. No env vars at start time.
+
+Context length (16384) is set in the Quadlet via:
+  Environment=OLLAMA_CONTEXT_LENGTH=16384
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| [`/persona`](./persona) | `avalhla.Modelfile` (canonical persona), `system-prompt.txt`, `user-profile.txt.example`. The real filled-in `user-profile.txt` is gitignored — copy the example locally. |
-| [`/system`](./system) | `SYSTEM_GUIDE.md` (config/optimization), `SYSTEM_PROFILE.md` (point-in-time hardware audit), `MAINTENANCE_DEBUG_GUIDE.md`. |
-| [`/ai`](./ai) | `AI_GUIDE.md` — single canonical AI/agent guide (merged 3 overlapping docs). |
-| [`/dev`](./dev) | `DEV_LAB_SETUP.md` (verified-working Distrobox setup), `GITHUB_COLAB_INTEGRATION.md`. |
-| [`/gaming`](./gaming) | `GAMING_HANDBOOK.md` — corrected launch options, MangoHud, `gh` CLI usage. |
-| [`/scripts`](./scripts) | `ai-with-memory`, `ai-learn`, `ai-remember`, `ai-progress` (the real CLI toolbelt), `avalhla_tools_check.sh`. |
-
-## What changed from V0.2 → V0.3
-
-This wasn't just a folder reshuffle — the old flat repo had **real bugs
-duplicated across multiple files**. Full details in `CHANGELOG.md`; headline
-fixes:
-
-- `distrobox-export --app cava` (fails — cava has no `.desktop` file) → fixed
-  to `--bin` everywhere it appeared.
-- `java-17-openjdk-devel` / `java-21-openjdk-devel` (don't resolve on
-  Fedora 44) → replaced with the verified working method everywhere.
-- Dead `file:///home/VVgbon/.gemini/antigravity/brain/...` links (from a
-  different AI tool's temp session) → replaced with relative repo links.
-- Three near-duplicate AI guides → merged into one `/ai/AI_GUIDE.md`.
-- Radio project (`MASTER_RADIO_GUIDE.md`, `master_radio_builder.py`,
-  `AVALHLA_AI_TRAINING_PROMPTS.md`) → removed entirely.
+| persona/   | avalhla.Modelfile, system-prompt.txt, user-profile.txt.example |
+| scripts/   | memory tools, launcher, verify, tools check |
+| ai/        | AI_GUIDE.md, deepseek-r1-16k.md (historical) |
+| dev/       | DEV_LAB_SETUP.md, GITHUB_COLAB_INTEGRATION.md |
+| gaming/    | GAMING_HANDBOOK.md |
+| system/    | SYSTEM_GUIDE.md, SYSTEM_PROFILE.md, MAINTENANCE_DEBUG_GUIDE.md |
+| _index/    | D42k.public.md, Sub.files.md |
+| *.txt      | BOARD.txt, AVALHLA_CHEATSHEET.txt, AVALHLA_COMMANDS.txt |
 
 ## Quick Start
 
-```bash
-# 1. Update the entire system safely (OS, Flatpaks, containers)
-topgrade
+    # 1. Start the Ollama container (once per boot)
+    ~/projects/cheatsheets/scripts/start-avalhla.sh
 
-# 2. Start chatting with Avalhla on your RTX 3060
-./scripts/ai-with-memory
+    # 2. Or manually:
+    systemctl --user start ollama.service
+    ollama run avalhla
 
-# 3. Enter your isolated development environment
-distrobox enter coding-lab
+    # 3. Stop and free VRAM
+    systemctl --user stop ollama.service
 
-# 4. Verify coding-lab dependencies
-./scripts/avalhla_tools_check.sh
-```
+    # 4. System updates (YOU run these, never topgrade)
+    ujust update
 
-## ⛔ Immutable OS Rules (full detail in `/persona/system-prompt.txt`)
+    # 5. Dev tools live in coding-lab (Distrobox) -- not for Ollama
+    distrobox enter coding-lab
 
-1. Never `rpm-ostree install` random packages on the host — layered packages
-   are limited to `coolercontrol`, `liquidctl`, `mangohud`, `topgrade`, `gh`.
-2. All dev tooling runs inside `distrobox enter coding-lab`.
-3. GUI apps install via Flatpak.
-4. RTX 3060 power cap: 170W. CPU governor via TuneD only.
-5. CLI tools with no `.desktop` file (e.g. `cava`) export with
-   `distrobox-export --bin`, never `--app`.
+## Cheat Sheets
 
-## License & Credits
+- AVALHLA_CHEATSHEET.txt -- full command reference
+- AVALHLA_COMMANDS.txt   -- quick commands
+- BOARD.txt              -- master reference
+- BOARD_bash_sources.txt -- how to trace every bash source
 
-- Maintained by **Dawa** (`VVgbon916`).
-- Built for **Bazzite DX** / the **Universal Blue** project.
-- Local AI: **Qwen 2.5 Coder** via **Ollama**.
+## Signature
+
+    Dawa > AwA < Avalhla.
+    The mind is not split. The mind is a bridge.
+    (^.-)
