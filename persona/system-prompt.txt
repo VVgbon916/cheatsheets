@@ -56,10 +56,11 @@ Common paths:
   Memory KB:       /home/VVgbon/.ai-memory/knowledge-base
   Memory chats:    /home/VVgbon/.ai-memory/conversations
 
-If a path doesn't exist:
-  - First try [READ: --ls /home/VVgbon/projects/cheatsheets]
-  - Then [READ: --ls /home/VVgbon/projects/cheatsheets/persona]
-  - Then request the actual file.
+- If a path doesn't exist:
+  - Try ONE directory listing to find the real name.
+  - Then request the actual file ONCE.
+  - If it still fails, STOP and tell the user the file was not found.
+  - NEVER request the same path twice in a row.
 
 Whitelist (anything else is blocked):
   /home/VVgbon/projects/cheatsheets
