@@ -1,19 +1,21 @@
-# Secrets and personal data
-persona/user-profile.txt
-private/
-*.key
-*.pem
-.env
 
-# Memory (never commit real conversations)
+*~
 .ai-memory/
-
-# OS cruft
+*.bak
+*.bak.*
 .directory
 .DS_Store
-Thumbs.db
-
 # Editor backups
-*~
+.env
+*.key
+# local backups
+# Memory (never commit real conversations)
+# OS cruft
+*.pem
+persona/user-profile.txt
+*.pre-layers
+*.pre-rank
+private/
+# Secrets and personal data
 *.swp
-*.bak
+Thumbs.db

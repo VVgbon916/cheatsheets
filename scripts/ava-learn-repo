@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# ava-learn-repo -- index a repo into the KB.
+# Respects .gitignore, skips binaries, caps total bytes, writes manifest.
+set -Eeuo pipefail
+
+REPO="${1:-$HOME/projects/cheatsheets}"
+KB_DIR="$HOME/.ai-memory/knowledge-base"
+MAX_BYTES=$((500 * 1024))
+NAME="$(basename "$REPO")"
+
+MANIFEST="$KB_DIR/${NAME}.manifest.json"
+KB_FILE="$KB_DIR/${NAME}.kb.txt"
+
+mkdir -p "$KB_DIR"
+
+if [[ ! -d "$REPO" ]]; then
+    echo "X not a dir: $REPO" >&2
+    exit 1
+fi
+
+cd "$REPO"
+
+# file list: tracked + untracked, gitignore honored
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    FILES=$(git ls-files --cached --others --exclude-standard)
+else
+    FILES=$(find . -type f | sed 's|^\./||')
+fi
+
+TOTAL=0
+: > "$KB_FILE"
+echo "[]" > "$MANIFEST"
+TMP_MANIFEST=$(mktemp)
+
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    [[ -f "$f" ]] || continue
+
+    # skip binaries by mime
+    MIME=$(file -b --mime "$f" 2>/dev/null || echo "")
+    case "$MIME" in
+        *charset=binary*|*application/octet-stream*|*image/*|*video/*|*audio/*) continue ;;
+    esac
+
+    SIZE=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
+    if (( TOTAL + SIZE > MAX_BYTES )); then
+        echo "  (cap reached at $TOTAL bytes, stopping)"
+        break
+    fi
+
+    HASH=$(sha256sum "$f" | awk '{print $1}')
+    TOTAL=$(( TOTAL + SIZE ))
+
+    {
+        echo ""
+        echo "===== FILE: $f ====="
+        echo "size: $SIZE  sha256: $HASH"
+        echo "-----"
+        head -c 20000 "$f"
+        echo ""
+    } >> "$KB_FILE"
+
+    jq -n --arg p "$f" --arg h "$HASH" --argjson s "$SIZE" \
+        '{path:$p, sha256:$h, size:$s}' >> "$TMP_MANIFEST"
+done <<< "$FILES"
+
+jq -s '.' "$TMP_MANIFEST" > "$MANIFEST"
+rm -f "$TMP_MANIFEST"
+
+FCOUNT=$(jq 'length' "$MANIFEST")
+
+echo ""
+echo "ava-learn-repo :: $NAME"
+echo "  repo     : $REPO"
+echo "  files    : $FCOUNT"
+echo "  bytes    : $TOTAL / $MAX_BYTES"
+echo "  manifest : $MANIFEST"
+echo "  kb       : $KB_FILE"
