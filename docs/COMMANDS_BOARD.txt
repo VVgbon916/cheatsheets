@@ -1,0 +1,220 @@
++==================================================================================================+
+|                                                                                                  |
+|                          C O M M A N D S   B O A R D                                             |
+|               All aliases, functions, sourced files, Make targets // local only                  |
+|                                                                                                  |
+|                          Dawa > AwA < Avalhla  //  (^.-)                                         |
+|                                                                                                  |
++==================================================================================================+
+
+Generated: 2026-09-21 20:35
+Shell:     /bin/bash
+Host:      VVgBazz
+
++==================================================================================================+
+|  SECTION 01  //  ALIASES                                                                         |
++==================================================================================================+
+
+alias ai-chat='~/projects/cheatsheets/scripts/ai-with-memory'
+alias ai-learn='~/projects/cheatsheets/scripts/ai-learn'
+alias ai-remember='~/projects/cheatsheets/scripts/ai-remember'
+alias ai-tool='~/projects/cheatsheets/scripts/ai-chat-tool'
+alias ask='~/projects/cheatsheets/scripts/ai-ask'
+alias avacheat='cat ~/projects/cheatsheets/AVALHLA_CHEATSHEET.txt'
+alias avacommands='cat ~/projects/cheatsheets/AVALHLA_COMMANDS.txt'
+alias avastart='~/projects/cheatsheets/scripts/start-avalhla.sh'
+alias avastop='systemctl --user stop ollama.service'
+alias board='cat ~/projects/cheatsheets/BOARD.txt'
+alias cheatsheet-prompt='cat ~/projects/cheatsheets/PROMPT_framed_cheatsheet.txt'
+alias java21='export JAVA_HOME=/opt/java-21 && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
+alias java25='export JAVA_HOME=/usr/lib/jvm/java-25-openjdk && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
+alias order='cat ~/projects/cheatsheets/Dawa_CheatAvalhlaOrder.md'
+alias repo='cd ~/projects/cheatsheets'
+alias topgrade='topgrade --disable system'
+
++==================================================================================================+
+|  SECTION 02  //  SHELL FUNCTIONS  (yours only)                                                   |
++==================================================================================================+
+
+ai
+research
+review
+vv
+
++==================================================================================================+
+|  SECTION 03  //  SOURCED FILES                                                                   |
++==================================================================================================+
+
+# Sources from rc files:
+"$rc"
+$ZSH/oh-my-zsh.sh
+/etc/bashrc
+/usr/share/bash-completion/bash_completion
+
+# Shell config files in ~/ (maxdepth 2):
+/home/VVgbon/.bash_profile
+/home/VVgbon/.bashrc
+/home/VVgbon/.nvidia-settings-rc
+/home/VVgbon/.oh-my-zsh/.prettierrc
+/home/VVgbon/.zshrc
+
++==================================================================================================+
+|  SECTION 04  //  PATH ADDITIONS                                                                  |
++==================================================================================================+
+
+/home/linuxbrew/.linuxbrew/bin
+/home/linuxbrew/.linuxbrew/sbin
+/home/VVgbon/bin
+/home/VVgbon/.local/bin
+/opt/java-21/bin
+
++==================================================================================================+
+|  SECTION 05  //  MAKE TARGETS  (all Makefiles in ~/projects)                                     |
++==================================================================================================+
+
+── /home/VVgbon/projects/cheatsheets ──
+    make ritual
+    make board
+
++==================================================================================================+
+|  SECTION 06  //  UJUST COMMANDS  (Bazzite)                                                       |
++==================================================================================================+
+
+Available recipes:
+    add-protonplus-to-steam                           # Add ProtonPlus to Steam Big Picture as a Non-Steam application
+    add-updater-to-steam
+    bios                                              # Boot into this device's BIOS/UEFI screen
+    bios-info                                         # Show BIOS info
+    cec-mode ACTION=""                                # Select the HDMI-CEC implementation. dGPU mode keeps the libcec/cec-ctl event services for external adapters. Native mode uses Valve's cecd backend for devices with native kernel CEC. [alias: cec-backend]
+    cec-sleep ACTION=""                               # Manage CEC_ONSLEEP_STANDBY - Controls whether TV goes to standby when system sleeps. Options: status | enable | disable [alias: toggle-cec-sleep]
+    check-idle-power-draw                             # Measure Idle Power Draw
+    check-local-overrides                             # Check for local overrides
+    clean-system                                      # Clean up old and unused podman images, volumes, flatpak packages and rpm-ostree content
+    configure-broadcom-wl ACTION="prompt"             # Configure Broadcom WL driver (Enabling WL breaks numerous other Wi-Fi adapters) [alias: broadcom-wl]
+    configure-opengamepadui ACTION=""                 # Enable/Disable opengamepadui overlay in gamemode
+    configure-override-videos ACTION=""               # Configure video overrides for Steam
+    device-info                                       # Gather device info to a pastebin
+    disable-bios-updates                              # Disable Steam Deck BIOS updates
+    disable-firmware-updates                          # Disable Steam Deck controller firmware updates
+    disable-ryzenadj-max-performance                  # disables ryzenadj --max-performance on AC power
+    disable-sdgyrodsu                                 # Disable SDGyroDSU
+    # Create distroboxes from a defined manifest
+    distrobox-assemble CONTAINER="prompt" ACTION="create" FILE="/etc/distrobox/distrobox.ini" # [alias: assemble]
+    # Create a new custom distrobox
+    distrobox-new IMAGE="prompt" NAME="prompt" HOMEDIR="" # [alias: distrobox]
+    enable-deck-bios-firmware-updates                 # Enable BIOS & Firmware update services for the Steam Deck
+    enable-ryzenadj-max-performance                   # runs ryzenadj --max-performance on AC power change
+    enroll-secure-boot-key                            # Enroll Nvidia driver & KMOD signing key for secure boot - Enter password "universalblue" if prompted
+    generate-inputplumber-ignorelist                  # Generate ignore configs for unknown external controllers not yet in our system-provided ignore list
+    get-decky-bazzite-buddy ACTION=""                 # Manage Decky Bazzite Buddy plugin. Options: status | install | uninstall
+    get-decky-lossless-scaling ACTION=""              # Manage Decky Lossless Scaling plugin. Options: status | install | uninstall
+    get-framegen ACTION=""                            # Manage Decky Framegen plugin. Options: status | install | uninstall
+    get-lsfg ACTION="prompt"                          # Set up LSFG-VK V2. This enables Lossless Scaling frame generation on Linux. Be sure to also install Lossless Scaling through Steam.
+    get-protonplus                                    # Install ProtonPlus from Flathub
+    install-ai-tools                                  # Install local AI tools (llmman) from brew
+    install-deckhd-bios                               # Install Deck HD BIOS
+    install-fonts                                     # Install fonts from brew
+    install-resolve ACTION=""                         # Install/update DaVinci Resolve, a closed-source video editing utility. Options: status | install | uninstall [aliases: install-davinci, install-davinci-resolve, install-resolve-studio]
+    logs-last-boot                                    # Show all messages from last boot
+    logs-this-boot                                    # Show all messages from this boot
+    remove-luks-tpm-unlock                            # Disable automatic LUKS unlock via TPM
+    resilio-sync ACTION=""                            # Manage Resilio Sync, a file synchronization utility powered by BitTorrent. Options: status | install | uninstall [alias: install-resilio-sync]
+    restore-bazzite-breeze-gtk-theme                  # Restore Bazzite Breeze GTK4 theme
+    restore-gamemode-shortcut                         # Restore the "Return to Gaming Mode" shortcut on the Desktop
+    restore-input-remapper                            # Re-enable input remapper feature on non-desktop images
+    restore-virtual-keyboard                          # Restores the stock virtual keyboard under KDE & GNOME
+    set-default-desktop                               # Set Desktop Mode as the default deck login session
+    set-default-game-mode                             # Set Game Mode as the default deck login session
+    setup-distrobox-app CONTAINER="prompt"            # Install specialized application containers (like brew)
+    setup-luks-tpm-unlock                             # Enable automatic LUKS unlock via TPM
+    setup-virtualization ACTION=""                    # Setup and configure virtualization and vfio
+    steam-icons ACTION=""                             # Manage Steam game shortcuts on the Desktop. Usage: just steam-icons [command] (list, remove, enable, disable). Options: status | remove | enable | disable
+    switch-to-ext4                                    # Use EXT4 for SD Cards, allows use of SteamOS formatted SD cards
+    toggle-gamemode ACTION=""                         # Toggle default boot between Steam Game Mode (gamescope-session) and Desktop
+    toggle-nvk                                        # Switch between Nvidia image and NVK
+    toggle-user-motd                                  # Toggle display of the user-motd in terminal
+    update-nvidia-runtime ACTION=""
+    verify-image                                      # Detects if you are on an unverified official image and rebases you to the signed version.
+    wol ACTION=""                                     # Manage wake-on-lan functionality. Options: status | enable | disable | force-enable [alias: toggle-wol]
+
+    [apps]
+    cockpit ACTION=""                                 # Manage Cockpit, a web-based graphical interface for servers. Options: status | enable | disable
+    configure-waydroid ACTION=""                      # Launch Waydroid configuration helper. Options: init | configure | gpu | integration | reset | helper [alias: setup-waydroid]
+
++==================================================================================================+
+|  SECTION 07  //  QUICK TOOL LISTS                                                                |
++==================================================================================================+
+
+── Homebrew formulas ──
+    acl
+    atuin
+    bash
+    bash-preexec
+    bat
+    brotli
+    bzip2
+    ca-certificates
+    chezmoi
+    dbus
+    direnv
+    dysk
+    expat
+    eza
+    fd
+    gh
+    glab
+    gmp
+    libedit
+    libffi
+    libgit2
+    libssh2
+    libxcrypt
+    llhttp
+    lz4
+    mpdecimal
+    ncurses
+    oniguruma
+    openssl@3
+    pcre2
+    python@3.14
+    readline
+    ripgrep
+    shellcheck
+    sqlite
+    starship
+    stress-ng
+    tealdeer
+    television
+    trash-cli
+
+── Top 20 Flatpaks (by name) ──
+    Dolphin Emulator
+    Fedora Media Writer
+    Fightcade
+    Firefox
+    Firmware
+    Flatseal
+    Gwenview
+    Haruna
+    Impression
+    KCalc
+    Kontainer
+    MAME
+    Okular
+    Podman Desktop
+    ProtonPlus
+    Protontricks
+    qpwgraph
+    Riff
+    RPCS3
+    Spotify
+
+── Podman containers (user) ──
+    ollama  Up 2 hours
+
++==================================================================================================+
+|                                                                                                  |
+|                          Dawa > AwA < Avalhla  //  (^.-)                                         |
+|                          EVERY COMMAND. ONE BOARD. LOCAL ONLY.                                   |
+|                                                                                                  |
++==================================================================================================+
