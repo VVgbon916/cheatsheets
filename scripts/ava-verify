@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# ava-verify -- end-to-end pipeline check. Pure bash, no LLM.
+# Exit 0 = all pass, 1 = any fail.
+set -Eeuo pipefail
+
+PASS=0
+FAIL=0
+ok()   { printf '  [ OK ] %s\n' "$1"; PASS=$(( PASS + 1 )); }
+bad()  { printf '  [FAIL] %s -- %s\n' "$1" "$2"; FAIL=$(( FAIL + 1 )); }
+
+ROOT="$HOME/Avalhla"
+REPO="$ROOT/repo"
+MEM="$ROOT/memory"
+
+echo "== ava-verify :: $(date '+%Y-%m-%d %H:%M %Z') =="
+echo ""
+
+# 1. root layout
+echo "-- root layout --"
+[[ -d "$REPO/.git" ]]  && ok "repo git"          || bad "repo git"       "no .git at $REPO"
+[[ -d "$MEM" ]]        && ok "memory dir"        || bad "memory dir"     "missing $MEM"
+[[ -L ~/.ai-memory ]]  && ok "~/.ai-memory link" || bad "~/.ai-memory"   "not a symlink"
+[[ -L ~/cheatsheets ]] && ok "~/cheatsheets link"|| bad "~/cheatsheets"  "not a symlink"
+
+# 2. ollama server + models
+echo ""
+echo "-- ollama --"
+if curl -fsS "${OLLAMA_HOST:-http://localhost:11434}/api/tags" >/dev/null 2>&1; then
+    ok "server reachable"
+else
+    bad "server reachable" "curl failed"
+fi
+
+for m in avalhla avalhla-code avalhla-chat avalhla-review qwen2.5:7b; do
+    if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "${m}:latest" \
+       || ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$m"; then
+        ok "model $m"
+    else
+        bad "model $m" "not in ollama list"
+    fi
+done
+
+# 3. scripts present + executable
+echo ""
+echo "-- scripts --"
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit; do
+    p="$REPO/scripts/$s"
+    if [[ -x "$p" ]]; then
+        ok "script $s"
+    else
+        bad "script $s" "missing or not executable"
+    fi
+done
+
+# 4. PATH resolution
+echo ""
+echo "-- PATH --"
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit; do
+    if command -v "$s" >/dev/null 2>&1; then
+        ok "which $s"
+    else
+        bad "which $s" "not on PATH"
+    fi
+done
+
+# 5. memory dirs
+echo ""
+echo "-- memory --"
+for d in conversations knowledge-base auto-read reflections reviewed profiles; do
+    if [[ -d "$MEM/$d" ]]; then
+        ok "memory/$d"
+    else
+        bad "memory/$d" "missing"
+    fi
+done
+
+# 6. systemd
+echo ""
+echo "-- systemd --"
+if systemctl --user is-enabled ava-reflect.timer >/dev/null 2>&1; then
+    ok "ava-reflect.timer enabled"
+else
+    bad "ava-reflect.timer enabled" "not enabled"
+fi
+if systemctl --user is-active ava-reflect.timer >/dev/null 2>&1; then
+    ok "ava-reflect.timer active"
+else
+    bad "ava-reflect.timer active" "not active"
+fi
+if systemctl --user is-active ollama.service >/dev/null 2>&1 \
+   || curl -fsS "${OLLAMA_HOST:-http://localhost:11434}/api/tags" >/dev/null 2>&1; then
+    ok "ollama service"
+else
+    bad "ollama service" "not active"
+fi
+
+# 7. git
+echo ""
+echo "-- git --"
+cd "$REPO"
+DIRTY="$(git status --porcelain | wc -l)"
+if [[ "$DIRTY" -eq 0 ]]; then
+    ok "working tree clean"
+else
+    bad "working tree clean" "$DIRTY file(s) modified"
+fi
+
+BR="$(git rev-parse --abbrev-ref HEAD)"
+if git rev-parse --verify "origin/$BR" >/dev/null 2>&1; then
+    AHEAD="$(git rev-list --count "origin/$BR..HEAD")"
+    BEHIND="$(git rev-list --count "HEAD..origin/$BR")"
+    if [[ "$AHEAD" -eq 0 && "$BEHIND" -eq 0 ]]; then
+        ok "git in sync with origin/$BR"
+    else
+        bad "git in sync" "ahead $AHEAD behind $BEHIND"
+    fi
+else
+    bad "git remote tracking" "no origin/$BR"
+fi
+
+# 8. audit
+echo ""
+echo "-- audit --"
+if "$REPO/scripts/ava-audit" >/dev/null 2>&1; then
+    ok "ava-audit CLEAN"
+else
+    bad "ava-audit" "banned patterns found"
+fi
+
+# summary
+echo ""
+echo "== summary =="
+printf "  pass: %d\n  fail: %d\n" "$PASS" "$FAIL"
+if [[ "$FAIL" -eq 0 ]]; then
+    echo "  result: ALL GREEN"
+    exit 0
+else
+    echo "  result: $FAIL FAILURE(S)"
+    exit 1
+fi
