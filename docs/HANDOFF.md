@@ -90,7 +90,7 @@
     step12  ava-doc      README generator
     step13  ava-audit    banned-pattern scanner
 
-    Extra: path migration 2026-09-21  (~/projects/cheatsheets -> ~/Avalhla/repo)
+    Extra: single-root migration 2026-09-21  (all paths now under ~/Avalhla)          
 
 
 +==================================================================================================+
