@@ -1,4 +1,4 @@
-# Source Map — Cheatsheets Repo
+# Source Map -- Cheatsheets Repo
 
 ## Layout
 
@@ -32,5 +32,5 @@
 
 ## Topgrade config
 
-`~/.config/topgrade.toml` — controlled update list.
+`~/.config/topgrade.toml` -- controlled update list.
 Docs: see RITUAL.txt Section 03.

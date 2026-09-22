@@ -42,6 +42,26 @@ run_check() {
     fi
 }
 
+run_check_excluding() {
+    local label="$1" pattern="$2" globs="$3" fix="$4" exclude="$5"
+    local raw filtered
+    raw="$(grep -rInE "$pattern" $globs 2>/dev/null \
+        --exclude-dir=.git --exclude-dir=.ai-memory \
+        --exclude='*.bak' --exclude='*.bak.*' --exclude='*.pre-*' || true)"
+    filtered="$(printf '%s\n' "$raw" \
+        | grep -vE "$ALLOW_RE" \
+        | grep -vE "$SELF_RE" \
+        | grep -vE "$exclude" \
+        | sed '/^[[:space:]]*$/d' || true)"
+    if [[ -n "$filtered" ]]; then
+        echo ""
+        echo "## $label"
+        printf '%s\n' "$filtered" | sed 's|^|  |'
+        echo "  FIX: $fix"
+        FINDINGS=$(( FINDINGS + 1 ))
+    fi
+}
+
 echo "== ava-audit :: $REPO =="
 
 run_check "sudo dnf/apt install/remove/update on host" \
@@ -54,10 +74,13 @@ run_check "DXVK_ASYNC active usage (=)" \
     "." \
     "remove -- deprecated and unsupported"
 
-run_check "BSD sed -i (empty string arg)" \
+# ava-explain legitimately contains the BSD literal because it strips it from LLM output
+BSD_SED_GLOBS="./scripts ./docs ./systemd ./persona ."
+run_check_excluding "BSD sed -i (empty string arg)" \
     "sed[[:space:]]+-i[[:space:]]+''" \
-    "." \
-    "use GNU sed: sed -i pattern file"
+    "$BSD_SED_GLOBS" \
+    "use GNU sed: sed -i pattern file" \
+    "scripts/ava-explain"
 
 run_check "sudo sysctl on host" \
     'sudo[[:space:]]+sysctl' \

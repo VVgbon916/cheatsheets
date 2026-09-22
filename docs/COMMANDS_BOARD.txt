@@ -72,7 +72,7 @@ $ZSH/oh-my-zsh.sh
 |  SECTION 05  //  MAKE TARGETS  (all Makefiles in ~/Avalhla)                                     |
 +==================================================================================================+
 
-── /home/VVgbon/Avalhla/repo ──
+-- /home/VVgbon/Avalhla/repo --
     make ritual
     make board
 
@@ -145,7 +145,7 @@ Available recipes:
 |  SECTION 07  //  QUICK TOOL LISTS                                                                |
 +==================================================================================================+
 
-── Homebrew formulas ──
+-- Homebrew formulas --
     acl
     atuin
     bash
@@ -187,7 +187,7 @@ Available recipes:
     television
     trash-cli
 
-── Top 20 Flatpaks (by name) ──
+-- Top 20 Flatpaks (by name) --
     Dolphin Emulator
     Fedora Media Writer
     Fightcade
@@ -209,7 +209,7 @@ Available recipes:
     RPCS3
     Spotify
 
-── Podman containers (user) ──
+-- Podman containers (user) --
     ollama  Up 2 hours
 
 +==================================================================================================+
