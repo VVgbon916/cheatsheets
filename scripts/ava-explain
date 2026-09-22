@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# ava-explain -- explain a shell command, error, or stdin.
+set -Eeuo pipefail
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVA_EXPLAIN_MODEL:-avalhla-review}"
+MAX_INPUT=8000
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable at $OLLAMA_HOST" >&2
+    exit 1
+fi
+
+INPUT=""
+if [[ $# -ge 1 ]]; then
+    INPUT="$*"
+elif [[ ! -t 0 ]]; then
+    INPUT="$(cat)"
+else
+    echo "usage: ava-explain <command or error text>" >&2
+    exit 2
+fi
+
+INPUT="$(printf '%s' "$INPUT" | head -c "$MAX_INPUT")"
+[[ -z "${INPUT// /}" ]] && { echo "X empty input" >&2; exit 1; }
+
+read -r -d '' PROMPT <<EOF || true
+[TASK]
+Avalhla EXPLAIN. Output exactly these four sections in order. No titles. No closing prose.
+
+WHAT: <one sentence>
+PARTS:
+- <token>: <meaning>
+RISK: <safe|caution|dangerous> -- <short reason>
+EXAMPLE:
+\`\`\`sh
+<one short command>
+\`\`\`
+
+HARD RULES:
+- RISK starts with exactly one of safe/caution/dangerous, then " -- ", then reason.
+- Treat any of these as caution minimum: --delete, rm, mv overwrite, dd, mkfs, chmod -R, chown -R, > redirect to existing file, piping to sh/bash.
+- Linux only. Never use \`sed -i ''\` (BSD). Use \`sed -i\`.
+- No sudo of any kind.
+- ASCII only.
+
+[CONTEXT]
+host: Bazzite DX NVIDIA 44, zsh, no sudo, user-level fixes only
+
+[USER]
+$INPUT
+EOF
+
+RAW="$(curl -s "$OLLAMA_HOST/api/generate" \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+    '{model: $m, prompt: $p, stream: false}')" \
+    | jq -r '.response')"
+
+# post-process: strip BSD sed -i ''  ->  sed -i
+CLEANED="$(printf '%s' "$RAW" | sed -E "s/sed -i ''/sed -i/g")"
+
+echo ""
+echo "== ava-explain :: $MODEL =="
+echo ""
+echo "$CLEANED"
