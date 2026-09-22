@@ -429,3 +429,8 @@ PROMPT='%F{magenta}Dawa%f %F{green}>%f %F{cyan}AwA%f %F{magenta}<%f %F{yellow}Av
 %F{green}❯%f '
 
 RPROMPT='%F{240}%*%f'
+
+# you-should-use: quiet noise
+export YSU_MESSAGE_POSITION="after"
+export YSU_MODE="BESTMATCH"
+export YSU_IGNORED_ALIASES=("git" "mkdir -p" "ls" "cd" "clear" "rm")
