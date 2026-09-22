@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# ava-audit -- scan repo for banned patterns. Pure grep, no LLM.
+# Flags:
+#   --portability   also flag hardcoded /home/<user> paths in scripts/systemd
+# Exit 0 = clean, 1 = findings.
+set -Eeuo pipefail
+
+REPO="$PWD"
+PORTABILITY=0
+for arg in "$@"; do
+    case "$arg" in
+        --portability) PORTABILITY=1 ;;
+        -h|--help) echo "usage: ava-audit [--portability]"; exit 0 ;;
+        -*) echo "unknown flag: $arg" >&2; exit 2 ;;
+        *)  REPO="$arg" ;;
+    esac
+done
+
+cd "$REPO"
+
+FINDINGS=0
+
+# Lines that talk ABOUT a rule rather than break it: never / no / not / avoid / do not / deprecated / banned / docs headers
+ALLOW_RE='never|Never|NEVER|No sudo|no sudo|not suggest|Not suggest|avoid|AVOID|do not|Do not|do NOT|deprecated|banned|^[[:space:]]*#|^[[:space:]]*//|FIX:|NOTE:|RULE'
+
+# Exclude our own audit script from any scan
+SELF_RE='scripts/ava-audit:|/ava-audit'
+
+run_check() {
+    local label="$1" pattern="$2" globs="$3" fix="$4"
+    local raw filtered
+    raw="$(grep -rInE "$pattern" $globs 2>/dev/null \
+        --exclude-dir=.git --exclude-dir=.ai-memory \
+        --exclude='*.bak' --exclude='*.bak.*' --exclude='*.pre-*' || true)"
+    filtered="$(printf '%s\n' "$raw" | grep -vE "$ALLOW_RE" | grep -vE "$SELF_RE" | sed '/^[[:space:]]*$/d' || true)"
+    if [[ -n "$filtered" ]]; then
+        echo ""
+        echo "## $label"
+        printf '%s\n' "$filtered" | sed 's|^|  |'
+        echo "  FIX: $fix"
+        FINDINGS=$(( FINDINGS + 1 ))
+    fi
+}
+
+echo "== ava-audit :: $REPO =="
+
+run_check "sudo dnf/apt install/remove/update on host" \
+    'sudo[[:space:]]+(dnf|apt|apt-get)[[:space:]]+(install|remove|update|upgrade|autoremove)' \
+    "." \
+    "use Distrobox for dev; never sudo pkg-manager on host"
+
+run_check "DXVK_ASYNC active usage (=)" \
+    'DXVK_ASYNC[[:space:]]*=' \
+    "." \
+    "remove -- deprecated and unsupported"
+
+run_check "BSD sed -i (empty string arg)" \
+    "sed[[:space:]]+-i[[:space:]]+''" \
+    "." \
+    "use GNU sed: sed -i pattern file"
+
+run_check "sudo sysctl on host" \
+    'sudo[[:space:]]+sysctl' \
+    "." \
+    "use user-level diagnostic (ulimit -n); no sudo sysctl"
+
+# non-ASCII in docs/
+NONASCII="$(grep -rInP '[^\x00-\x7F]' docs 2>/dev/null --exclude-dir=.git || true)"
+if [[ -n "$NONASCII" ]]; then
+    echo ""
+    echo "## non-ASCII in docs/"
+    printf '%s\n' "$NONASCII" | sed 's|^|  |'
+    echo "  FIX: rewrite as ASCII (no em-dash, no fancy quotes, no emoji)"
+    FINDINGS=$(( FINDINGS + 1 ))
+fi
+
+# portability (opt-in)
+if (( PORTABILITY == 1 )); then
+    HARD="$(grep -rInE '/home/[a-zA-Z0-9_]+' scripts systemd 2>/dev/null \
+        --exclude-dir=.git \
+        | grep -vE 'SELF_RE|\$HOME' | grep -vE "$SELF_RE" \
+        | sed '/^[[:space:]]*$/d' || true)"
+    if [[ -n "$HARD" ]]; then
+        echo ""
+        echo "## hardcoded /home/<user> (scripts/ + systemd/)"
+        printf '%s\n' "$HARD" | sed 's|^|  |'
+        echo "  FIX: use \$HOME instead"
+        FINDINGS=$(( FINDINGS + 1 ))
+    fi
+fi
+
+echo ""
+if (( FINDINGS == 0 )); then
+    echo "result: CLEAN -- no banned patterns found"
+    exit 0
+else
+    echo "result: $FINDINGS rule(s) violated"
+    exit 1
+fi
