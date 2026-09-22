@@ -1,0 +1,20 @@
+# ── Topgrade config for VVgbon@VVgBazz ──
+
+[misc]
+disable = [
+    "waydroid",
+    "cursor",
+    "antigravity",
+    "containers",
+    "ollama",         # replaced by the custom command below
+]
+
+ignore_failures = [
+    "waydroid",
+    "cursor",
+    "antigravity",
+    "containers",
+]
+
+[commands]
+"Update my Ollama models" = "ollama pull qwen2.5-coder:7b"

@@ -1,0 +1,3 @@
+/home/VVgbon/projects/cheatsheets
+/home/VVgbon/.ai-memory/knowledge-base
+/home/VVgbon/projects

@@ -1,0 +1,16 @@
+[Unit]
+Description=The ollama container
+After=local-fs.target
+
+[Container]
+ContainerName=ollama
+Image=docker.io/ollama/ollama
+AddDevice=nvidia.com/gpu=all
+SecurityLabelDisable=true
+PublishPort=11434:11434
+Volume=ollama:/root/.ollama:z
+Environment=OLLAMA_CONTEXT_LENGTH=16384
+Environment=OLLAMA_NUM_GPU=999
+
+[Install]
+WantedBy=default.target

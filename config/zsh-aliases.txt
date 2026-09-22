@@ -1,0 +1,7 @@
+# Zsh aliases from ~/.zshrc (extracted 2026-09-21)
+
+## Aliases
+(none)
+
+## Exports
+export ZSH="$HOME/.oh-my-zsh"
