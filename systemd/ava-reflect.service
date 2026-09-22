@@ -1,0 +1,11 @@
+[Unit]
+Description=Avalhla daily reflection (ai-remember)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/VVgbon/projects/cheatsheets/scripts/ai-remember
+Environment=OLLAMA_HOST=http://localhost:11434
+Environment=AVALHLA_MODEL=avalhla
+StandardOutput=append:/home/VVgbon/.ai-memory/reflections/last-run.log
+StandardError=append:/home/VVgbon/.ai-memory/reflections/last-run.log
