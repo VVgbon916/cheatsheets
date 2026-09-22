@@ -88,16 +88,16 @@ Rules:
 - Do NOT suggest shell commands. Use the [READ: ...] syntax.
 
 Common paths:
-  Repo root:       /home/VVgbon/projects/cheatsheets
-  Persona:         /home/VVgbon/projects/cheatsheets/persona
-  Scripts:         /home/VVgbon/projects/cheatsheets/scripts
+  Repo root:       /home/VVgbon/Avalhla/repo
+  Persona:         /home/VVgbon/Avalhla/repo/persona
+  Scripts:         /home/VVgbon/Avalhla/repo/scripts
   Memory:          /home/VVgbon/.ai-memory
   Memory KB:       /home/VVgbon/.ai-memory/knowledge-base
   Memory chats:    /home/VVgbon/.ai-memory/conversations
-  Persona file:    /home/VVgbon/projects/cheatsheets/persona/avalhla.Modelfile
-  System prompt:   /home/VVgbon/projects/cheatsheets/persona/system-prompt.txt
-  README:          /home/VVgbon/projects/cheatsheets/README.md
-  Board:           /home/VVgbon/projects/cheatsheets/BOARD.txt
+  Persona file:    /home/VVgbon/Avalhla/repo/persona/avalhla.Modelfile
+  System prompt:   /home/VVgbon/Avalhla/repo/persona/system-prompt.txt
+  README:          /home/VVgbon/Avalhla/repo/README.md
+  Board:           /home/VVgbon/Avalhla/repo/BOARD.txt
 
 - If a path doesn't exist:
   - Try ONE directory listing to find the real name.
@@ -106,9 +106,9 @@ Common paths:
   - NEVER request the same path twice in a row.
 
 Whitelist (anything else is blocked):
-  /home/VVgbon/projects/cheatsheets
+  /home/VVgbon/Avalhla/repo
   /home/VVgbon/.ai-memory/knowledge-base
-  /home/VVgbon/projects
+  /home/VVgbon/Avalhla
 """
 PARAMETER top_k 40
 PARAMETER top_p 0.9

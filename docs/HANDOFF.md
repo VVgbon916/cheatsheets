@@ -132,7 +132,7 @@
 
     STEP 6  //  07 PROJECT MEMORY
     New command: ava-learn-repo
-    Index every file in ~/projects/cheatsheets into KB.
+    Index every file in ~/Avalhla/repo into KB.
     Respect .gitignore. Skip binaries. Cap at 500KB total.
     Adds manifest of what was indexed + hash per file.
     Time: 1 hr

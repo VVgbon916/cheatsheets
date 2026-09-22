@@ -13,8 +13,8 @@ if [[ -z "${1:-}" ]]; then
     echo "  Index a file or folder into ~/.ai-memory/knowledge-base/"
     echo ""
     echo "Examples:"
-    echo "  ai-learn ~/projects/cheatsheets"
-    echo "  ai-learn ~/projects/cheatsheets/scripts"
+    echo "  ai-learn ~/Avalhla/repo"
+    echo "  ai-learn ~/Avalhla/repo/scripts"
     echo "  ai-learn ~/.bashrc"
     exit 1
 fi

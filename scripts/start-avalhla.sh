@@ -23,7 +23,7 @@ echo "✅ Ollama ready"
 
 if ! ollama list 2>/dev/null | awk '{print $1}' | grep -q "^${MODEL}:latest$"; then
     echo "⚠️  Model '$MODEL' not found. Building from persona/avalhla.Modelfile..."
-    cd "$HOME/projects/cheatsheets"
+    cd "$HOME/Avalhla/repo"
     ollama create "$MODEL" -f persona/avalhla.Modelfile
 fi
 

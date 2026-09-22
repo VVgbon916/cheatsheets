@@ -5,7 +5,7 @@
 #   --json          emit JSON instead of text
 set -Eeuo pipefail
 
-REPO="${AVA_BRIEF_REPO:-$HOME/projects/cheatsheets}"
+REPO="${AVA_BRIEF_REPO:-$HOME/Avalhla/repo}"
 REFLECT_DIR="$HOME/.ai-memory/reflections"
 DO_TOPGRADE=1
 AS_JSON=0

@@ -64,10 +64,10 @@ OUT="$HOME/COMMANDS_BOARD.txt"
 
   # ── SECTION 05: MAKE TARGETS ────────────────────────────────────────────────────────
   echo "+==================================================================================================+"
-  echo "|  SECTION 05  //  MAKE TARGETS  (all Makefiles in ~/projects)                                     |"
+  echo "|  SECTION 05  //  MAKE TARGETS  (all Makefiles in ~/Avalhla)                                     |"
   echo "+==================================================================================================+"
   echo ""
-  find ~/projects -maxdepth 3 \( -name "Makefile" -o -name "makefile" \) 2>/dev/null | sort | while read -r mf; do
+  find ~/Avalhla -maxdepth 3 \( -name "Makefile" -o -name "makefile" \) 2>/dev/null | sort | while read -r mf; do
     dir=$(dirname "$mf")
     echo "── ${dir/#$HOME/~} ──"
     grep -E "^[a-zA-Z_][a-zA-Z0-9_-]*:" "$mf" 2>/dev/null \

@@ -20,7 +20,7 @@
 +==================================================================================================+
 
     # Start the Ollama container + open chat
-    ~/projects/cheatsheets/scripts/start-avalhla.sh
+    ~/Avalhla/repo/scripts/start-avalhla.sh
 
     # Or manually:
     systemctl --user start ollama.service
@@ -81,10 +81,10 @@
 +==================================================================================================+
 
     # Edit the Modelfile
-    nano ~/projects/cheatsheets/persona/avalhla.Modelfile
+    nano ~/Avalhla/repo/persona/avalhla.Modelfile
 
     # Rebuild (server must be running)
-    cd ~/projects/cheatsheets
+    cd ~/Avalhla/repo
     ollama create avalhla -f persona/avalhla.Modelfile
 
     # Relaunch
@@ -126,7 +126,7 @@
              systemctl --user restart ollama.service
 
     SYMPTOM: Wrong personality
-    FIX:     cd ~/projects/cheatsheets
+    FIX:     cd ~/Avalhla/repo
              ollama create avalhla -f persona/avalhla.Modelfile
 
     SYMPTOM: Slow generation
@@ -159,13 +159,13 @@
 |  SECTION 09  //  FILE LOCATIONS                                                                 |
 +==================================================================================================+
 
-    ~/projects/cheatsheets/persona/avalhla.Modelfile     her source of truth
-    ~/projects/cheatsheets/persona/system-prompt.txt     plain version
-    ~/projects/cheatsheets/persona/user-profile.txt      local, gitignored
-    ~/projects/cheatsheets/scripts/start-avalhla.sh      launcher
-    ~/projects/cheatsheets/scripts/ai-with-memory        memory chat
-    ~/projects/cheatsheets/scripts/ai-learn              file indexer
-    ~/projects/cheatsheets/scripts/ai-remember           reflection
+    ~/Avalhla/repo/persona/avalhla.Modelfile     her source of truth
+    ~/Avalhla/repo/persona/system-prompt.txt     plain version
+    ~/Avalhla/repo/persona/user-profile.txt      local, gitignored
+    ~/Avalhla/repo/scripts/start-avalhla.sh      launcher
+    ~/Avalhla/repo/scripts/ai-with-memory        memory chat
+    ~/Avalhla/repo/scripts/ai-learn              file indexer
+    ~/Avalhla/repo/scripts/ai-remember           reflection
     ~/.config/containers/systemd/ollama.container        container definition
     ~/.ollama/                                            models + logs
 

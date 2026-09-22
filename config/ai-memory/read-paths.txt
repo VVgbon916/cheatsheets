@@ -1,3 +1,3 @@
-/home/VVgbon/projects/cheatsheets
+/home/VVgbon/Avalhla/repo
 /home/VVgbon/.ai-memory/knowledge-base
-/home/VVgbon/projects
+/home/VVgbon/Avalhla

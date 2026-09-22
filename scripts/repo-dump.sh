@@ -2,7 +2,7 @@
 # Dumps entire repo (tree + file contents) for AI review.
 # Skips .git, binaries, caches.
 
-REPO="${1:-$HOME/projects/cheatsheets}"
+REPO="${1:-$HOME/Avalhla/repo}"
 cd "$REPO" || { echo "Repo not found: $REPO"; exit 1; }
 
 {

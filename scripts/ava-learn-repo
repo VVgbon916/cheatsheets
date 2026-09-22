@@ -3,7 +3,7 @@
 # Respects .gitignore, skips binaries, caps total bytes, writes manifest.
 set -Eeuo pipefail
 
-REPO="${1:-$HOME/projects/cheatsheets}"
+REPO="${1:-$HOME/Avalhla/repo}"
 KB_DIR="$HOME/.ai-memory/knowledge-base"
 MAX_BYTES=$((500 * 1024))
 NAME="$(basename "$REPO")"

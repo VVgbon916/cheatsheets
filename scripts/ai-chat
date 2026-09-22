@@ -13,8 +13,8 @@ OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVALHLA_MODEL:-avalhla}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
-RANK_BIN="$HOME/projects/cheatsheets/scripts/ava-context"
-READ_BIN="$HOME/projects/cheatsheets/scripts/ai-read"
+RANK_BIN="$HOME/Avalhla/repo/scripts/ava-context"
+READ_BIN="$HOME/Avalhla/repo/scripts/ai-read"
 
 MEM_TURNS="${AVALHLA_MEMORY_TURNS:-8}"
 ENABLE_READ=0
