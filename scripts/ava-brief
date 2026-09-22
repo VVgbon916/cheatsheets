@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# ava-brief -- morning brief: git, topgrade, reflection, date.
+# Flags:
+#   --no-topgrade   skip topgrade dry-run (it can be slow)
+#   --json          emit JSON instead of text
+set -Eeuo pipefail
+
+REPO="${AVA_BRIEF_REPO:-$HOME/projects/cheatsheets}"
+REFLECT_DIR="$HOME/.ai-memory/reflections"
+DO_TOPGRADE=1
+AS_JSON=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-topgrade) DO_TOPGRADE=0; shift ;;
+        --json)        AS_JSON=1; shift ;;
+        -h|--help)
+            echo "usage: ava-brief [--no-topgrade] [--json]"
+            exit 0 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+
+TODAY="$(date +%Y-%m-%d)"
+NOW="$(date '+%Y-%m-%d %H:%M %Z')"
+
+# ---- git ----
+GIT_BRANCH=""
+GIT_DIRTY=0
+GIT_LAST=""
+if [[ -d "$REPO/.git" ]]; then
+    GIT_BRANCH="$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+    DIRTY="$(git -C "$REPO" status --porcelain 2>/dev/null || true)"
+    [[ -n "$DIRTY" ]] && GIT_DIRTY="$(echo "$DIRTY" | wc -l)"
+    GIT_LAST="$(git -C "$REPO" --no-pager log -1 --pretty='%h %s' 2>/dev/null || echo "")"
+fi
+
+# ---- latest reflection ----
+REFLECT_FILE=""
+REFLECT_BODY=""
+if [[ -d "$REFLECT_DIR" ]]; then
+    REFLECT_FILE="$(ls -1t "$REFLECT_DIR"/[0-9]*.md 2>/dev/null | head -1 || true)"
+    [[ -n "$REFLECT_FILE" ]] && REFLECT_BODY="$(head -c 800 "$REFLECT_FILE")"
+fi
+
+# ---- topgrade dry-run (optional, bounded) ----
+TOPG_AVAIL=0
+TOPG_SUMMARY=""
+if (( DO_TOPGRADE == 1 )) && command -v topgrade >/dev/null 2>&1; then
+    TOPG_AVAIL=1
+    TOPG_SUMMARY="$(timeout 25 topgrade --dry-run --no-retry 2>&1 \
+        | grep -iE '^(Running|Step|[0-9]+ steps|Summary|failed)' \
+        | head -n 12 || true)"
+    [[ -z "$TOPG_SUMMARY" ]] && TOPG_SUMMARY="(no summary captured -- topgrade timed out or produced no matched lines)"
+fi
+
+# ---- output ----
+if (( AS_JSON == 1 )); then
+    jq -n \
+        --arg now "$NOW" \
+        --arg repo "$REPO" \
+        --arg branch "$GIT_BRANCH" \
+        --argjson dirty "$GIT_DIRTY" \
+        --arg last "$GIT_LAST" \
+        --arg reflect_file "$REFLECT_FILE" \
+        --arg reflect_body "$REFLECT_BODY" \
+        --argjson topg_avail "$TOPG_AVAIL" \
+        --arg topg "$TOPG_SUMMARY" \
+        '{
+            date: $now,
+            repo: $repo,
+            git: { branch: $branch, dirty: $dirty, last_commit: $last },
+            reflection: { file: $reflect_file, body: $reflect_body },
+            topgrade: { available: ($topg_avail == 1), summary: $topg }
+        }'
+    exit 0
+fi
+
+echo ""
+echo "==== ava-brief :: $NOW ===="
+echo ""
+echo "-- repo ----"
+echo "  path   : $REPO"
+echo "  branch : $GIT_BRANCH"
+echo "  dirty  : $GIT_DIRTY file(s)"
+echo "  last   : $GIT_LAST"
+echo ""
+echo "-- reflection (latest) ----"
+if [[ -n "$REFLECT_FILE" ]]; then
+    echo "  file   : $REFLECT_FILE"
+    echo ""
+    echo "$REFLECT_BODY" | sed 's/^/  /'
+else
+    echo "  (none yet)"
+fi
+echo ""
+echo "-- topgrade ----"
+if (( TOPG_AVAIL == 0 )); then
+    echo "  (skipped)"
+else
+    echo "$TOPG_SUMMARY" | sed 's/^/  /'
+fi
+echo ""
