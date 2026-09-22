@@ -1,0 +1,78 @@
+# ~/.bashrc — sanitized reference (no secrets)
+# Extracted 2026-09-21
+
+## PATH + env
+export PATH
+export JAVA_HOME=/opt/java-21
+export PATH="$JAVA_HOME/bin:$PATH"
+export OLLAMA_HOST="http://localhost:11434"
+export AVALHLA_MODEL="avalhla"
+
+## Aliases
+alias ai-chat='~/projects/cheatsheets/scripts/ai-with-memory'
+alias ai-learn='~/projects/cheatsheets/scripts/ai-learn'
+alias ai-remember='~/projects/cheatsheets/scripts/ai-remember'
+alias ai-tool='~/projects/cheatsheets/scripts/ai-chat-tool'
+alias ask='~/projects/cheatsheets/scripts/ai-ask'
+alias avacheat='cat ~/projects/cheatsheets/AVALHLA_CHEATSHEET.txt'
+alias avacommands='cat ~/projects/cheatsheets/AVALHLA_COMMANDS.txt'
+alias avastart='~/projects/cheatsheets/scripts/start-avalhla.sh'
+alias avastop='systemctl --user stop ollama.service'
+alias board='cat ~/projects/cheatsheets/BOARD.txt'
+alias cheatsheet-prompt='cat ~/projects/cheatsheets/PROMPT_framed_cheatsheet.txt'
+alias java21='export JAVA_HOME=/opt/java-21 && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
+alias java25='export JAVA_HOME=/usr/lib/jvm/java-25-openjdk && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
+alias order='cat ~/projects/cheatsheets/Dawa_CheatAvalhlaOrder.md'
+alias repo='cd ~/projects/cheatsheets'
+alias topgrade='topgrade --disable system'
+
+## Functions
+ai() {
+    if [ -z "${*:-}" ]; then
+        echo 'Usage: ai "your question here"'
+        return 1
+    fi
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" --arg p "$*" \
+        '{model: $m, prompt: $p, stream: false}')" \
+        | jq -r '.response'
+}
+review() {
+    if [ -z "${1:-}" ] || [ ! -f "$1" ]; then
+        echo "Usage: review <file_path>"
+        return 1
+    fi
+    local content
+    content="$(cat "$1")"
+    echo "🔍 Avalhla is reviewing $1..."
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" --arg c "$content" --arg f "$1" \
+        '{model: $m, prompt: ("Review this file (" + $f + ") for bugs, security risks, memory leaks, and performance issues. Suggest clear, minimal fixes:\n\n" + $c), stream: false}')" \
+        | jq -r '.response'
+}
+research() {
+    if [ -z "${1:-}" ]; then
+        echo "Usage: research <url> [specific question]"
+        return 1
+    fi
+    local url="$1"
+    shift || true
+    local extra="${*:-Summarize key API patterns, classes, and syntax needed to implement this in Java/Bash.}"
+    local tmp="/tmp/ai_web_doc.txt"
+
+    echo "🌐 Fetching $url..."
+    curl -sL "$url" | sed -e 's/<[^>]*>/ /g' | tr -s ' ' > "$tmp"
+    head -n 300 "$tmp" > "${tmp}.trimmed"
+
+    echo "🤖 Avalhla is analyzing documentation..."
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" \
+            --arg c "$(cat "${tmp}.trimmed")" --arg p "$extra" \
+        '{model: $m, prompt: ($p + "\n\nDOCUMENTATION EXCERPT:\n" + $c), stream: false}')" \
+        | jq -r '.response'
+}
+vv() {
+    local repo="$HOME/projects/cheatsheets"
+    [[ -d "$repo" ]] || { echo "✗ repo not found at $repo"; return 1; }
+    ( cd "$repo" && make "$@" )
+}
