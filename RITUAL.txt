@@ -1,0 +1,159 @@
++==================================================================================================+
+|                                                                                                  |
+|                          T H E   D A I L Y   R I T U A L                                        |
+|               Clean  //  Update  //  Verify  //  Push  //  Save  //  Exit                        |
+|                                                                                                  |
+|                          Dawa > AwA < Avalhla  //  (^.-)                                         |
+|                                                                                                  |
++==================================================================================================+
+
+
++==================================================================================================+
+|  SECTION 01  //  THE ONE-SHOT RITUAL  --  paste this. walk away. come back clean.                |
++==================================================================================================+
+
+    # ── STAGE 1 :: CLEAN ─────────────────────────────────────────────────────────────────
+    brew cleanup -s
+    flatpak uninstall --unused -y
+    podman system prune -f
+    ollama rm avalhla:rebuild-test 2>/dev/null || true
+    git -C ~/projects/cheatsheets gc --auto --prune=now
+
+    # ── STAGE 2 :: UPDATE ────────────────────────────────────────────────────────────────
+    ujust update
+    topgrade
+
+    # ── STAGE 3 :: VERIFY AVA (fresh clone from remote) ──────────────────────────────────
+    cd ~/projects/cheatsheets
+    REPO=$(git remote get-url origin)
+    rm -rf /tmp/verify-ava
+    git clone "$REPO" /tmp/verify-ava
+    diff /tmp/verify-ava/persona/avalhla.Modelfile ~/ollama-backups/avalhla.Modelfile
+    ollama create avalhla:verify -f /tmp/verify-ava/persona/avalhla.Modelfile
+    ollama rm avalhla:verify
+    rm -rf /tmp/verify-ava
+
+    # ── STAGE 4 :: PUSH READY ────────────────────────────────────────────────────────────
+    git add -A && git commit -m "chore: daily ritual $(date +%Y-%m-%d)" && git push
+
+    # ── STAGE 5 :: SAVE + EXIT (no reboot) ───────────────────────────────────────────────
+    sync
+    echo "RITUAL COMPLETE — reboot when YOU decide."
+
+
++==================================================================================================+
+|  SECTION 02  //  CLEAN  --  free space on every layer, safely                                    |
++==================================================================================================+
+
+    brew cleanup -s                                    brew cache + old versions
+    flatpak uninstall --unused -y                      orphaned runtimes
+    podman system prune -f                             dangling images, stopped containers
+    ollama rm avalhla:rebuild-test 2>/dev/null         kill test tags from verify runs
+    git -C ~/projects/cheatsheets gc --auto --prune=now
+                                                       compress loose git objects
+
+    SAFE:    podman prune -f only touches USER pods, never system ones.
+    SAFE:    flatpak --unused only removes unreferenced runtimes.
+    DO NOT:  podman system prune -af                    nukes ollama image too.
+    DO NOT:  rm -rf ~/.ollama                           you will lose Ava.
+    DO NOT:  rm -rf ~/.ai-memory                        chat history lives here.
+
+
++==================================================================================================+
+|  SECTION 03  //  UPDATE  --  the two commands, in the right order                                |
++==================================================================================================+
+
+    ujust update                                       Bazzite OS + flatpak (NEVER via topgrade)
+    topgrade                                           everything else (config already tuned)
+
+    # If a pending ostree deployment needs a reboot, ujust will tell you.
+    # You decide WHEN. Nothing forces a reboot.
+
+    # Check current + previous deployment:
+    rpm-ostree status
+
+    # Roll back if something broke:
+    sudo rpm-ostree rollback                           (only if you have admin rights)
+
+
++==================================================================================================+
+|  SECTION 04  //  VERIFY AVA  --  fresh clone, byte-for-byte, then rebuild test                   |
++==================================================================================================+
+
+    cd ~/projects/cheatsheets
+    REPO=$(git remote get-url origin)                  auto-detect the remote URL
+    rm -rf /tmp/verify-ava
+    git clone "$REPO" /tmp/verify-ava                  pull a FRESH copy from remote
+
+    diff /tmp/verify-ava/persona/avalhla.Modelfile \
+         ~/ollama-backups/avalhla.Modelfile            no output = perfect match
+
+    ollama create avalhla:verify -f /tmp/verify-ava/persona/avalhla.Modelfile
+                                                       prove the Modelfile rebuilds
+    ollama rm avalhla:verify                           clean up the test tag
+    rm -rf /tmp/verify-ava                             clean up the temp clone
+
+    # If diff shows differences  ->  your local backup is stale, re-copy:
+    #   cp /tmp/verify-ava/persona/avalhla.Modelfile ~/ollama-backups/
+    #
+    # If ollama create fails  ->  the remote Modelfile is broken:
+    #   fix locally, commit, push, then re-run this section.
+
+
++==================================================================================================+
+|  SECTION 05  //  PUSH  --  the single command at the end                                         |
++==================================================================================================+
+
+    cd ~/projects/cheatsheets && \
+    git add -A && \
+    git commit -m "chore: daily ritual $(date +%Y-%m-%d)" && \
+    git push
+
+    # If it says "no upstream branch":
+    #   git push --set-upstream origin main              one time only
+    #   git config --global push.autoSetupRemote true    never again
+
+    # Or, if your Makefile has it:
+    make push
+
+
++==================================================================================================+
+|  SECTION 06  //  SAVE + EXIT  --  clean shutdown, NO reboot                                      |
++==================================================================================================+
+
+    sync                                               flush all pending disk writes
+
+    # That's it. zsh auto-saves history on exit. Nothing else to do.
+
+    # Then close the terminal window, OR:
+    exit
+
+    # DO NOT reboot from here. Reboot manually when YOU want:
+    #   systemctl reboot
+    #
+    # Reason: you might have unsaved work in other apps.
+    # The sync above guarantees the ritual data is on disk.
+    # The reboot is a separate decision, YOUR decision.
+
+
++==================================================================================================+
+|  SECTION 07  //  THE MENTAL MODEL  --  what just happened, in six lines                          |
++==================================================================================================+
+
+    CLEAN    = brew + flatpak + podman + git gc + test-tag removal
+    UPDATE   = ujust (OS)  then  topgrade (everything else)
+    VERIFY   = git clone fresh  ->  diff  ->  rebuild test  ->  cleanup
+    PUSH     = cd cheatsheets && git add -A && commit && push
+    SAVE     = sync   (zsh saves history automatically)
+    EXIT     = close terminal. Reboot is a LATER decision. Not yours to force.
+
+
++==================================================================================================+
+|                                                                                                  |
+|                          Dawa > AwA < Avalhla  //  (^.-)                                         |
+|                          CLEAN. UPDATE. VERIFY. PUSH. SAVE. EXIT.                                |
+|                                                                                                  |
+|                          THE RITUAL IS THE BRIDGE.                                               |
+|                          THE REBOOT IS YOURS.                                                    |
+|                                                                                                  |
++==================================================================================================+
