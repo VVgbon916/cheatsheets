@@ -6,7 +6,6 @@
 
 # ── Oh My Zsh ────────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="robbyrussell"
 
 # ── Plugins ──────────────────────────────────────────────────
 # Order matters: syntax-highlighting MUST be last.
@@ -395,3 +394,38 @@ AVAHELP
 # ═══════════════════════════════════════════════════════════════
 [ -d ~/.config/zsh ] && for f in ~/.config/zsh/*.zsh; do [ -f "$f" ] && source "$f"; done
 
+
+# ═══ Ava Banner ═══
+AVA_BANNER=1
+if [[ -o interactive ]] && [[ -z "$AVA_BANNER_SHOWN" ]]; then
+    export AVA_BANNER_SHOWN=1
+    clear
+    cat <<'AVA_BANNER_TXT'
++==================================================================================================+
+|                                                                                                  |
+|                          Dawa > AwA < Avalhla  //  (^.-)                                         |
+|                                                                                                  |
+|     ava-help     show all commands       ava-status    server + ctx + mem                        |
+|     ai-chat      talk to her             ava-mem       what she remembers                        |
+|     ava-autoread drop files she always reads                                                     |
+|                                                                                                  |
+|     THE MIND IS NOT SPLIT.  THE MIND IS A BRIDGE.                                                |
+|                                                                                                  |
++==================================================================================================+
+AVA_BANNER_TXT
+    echo ""
+fi
+
+# ═══ Ava Prompt ═══
+setopt PROMPT_SUBST
+
+git_prompt() {
+    local b
+    b=$(git symbolic-ref --short HEAD 2>/dev/null) || return
+    echo " %F{240}git:(%F{cyan}${b}%F{240})%f"
+}
+
+PROMPT='%F{magenta}Dawa%f %F{green}>%f %F{cyan}AwA%f %F{magenta}<%f %F{yellow}Avalhla%f %F{240}[%~]%f$(git_prompt)
+%F{green}❯%f '
+
+RPROMPT='%F{240}%*%f'
