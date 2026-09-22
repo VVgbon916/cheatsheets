@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ava-review -- review a file (or stdin) with avalhla-review
+# Usage: ava-review <file>
+#        cat foo | ava-review
+set -Eeuo pipefail
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="avalhla-review"
+MAX_BYTES=60000
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable at $OLLAMA_HOST" >&2
+    exit 1
+fi
+
+if [[ $# -ge 1 && -f "$1" ]]; then
+    SRC="$1"
+    CODE=$(head -c "$MAX_BYTES" "$SRC")
+elif [[ ! -t 0 ]]; then
+    SRC="<stdin>"
+    CODE=$(head -c "$MAX_BYTES")
+else
+    echo "usage: ava-review <file>" >&2
+    echo "       cat foo | ava-review" >&2
+    exit 2
+fi
+
+PROMPT="[TASK]
+mode: review
+goal: audit the file below. Emit exactly the five blocks: BUGS / SECURITY / PERF / STYLE / VERDICT.
+      One bullet per finding, format: file:line -- problem -- fix.
+      Clean block = \"none\". Do not restate code. Do not explain what it does.
+
+[CONTEXT]
+source: $SRC
+
+[USER]
+$CODE"
+
+echo ""
+echo "== ava-review :: $SRC =="
+echo ""
+
+curl -s "$OLLAMA_HOST/api/generate" \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+    '{model: $m, prompt: $p, stream: false}')" \
+    | jq -r '.response'
