@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# ava-context -- rank JSONL turns against a query, emit top N as context.
+# Usage: ava-context "<query>" [N]  < turns.jsonl
+# Score = keyword_match*3 + recency + length_bonus
+set -Eeuo pipefail
+
+QUERY="${1:-}"
+N="${2:-${AVALHLA_MEMORY_TURNS:-8}}"
+
+if [[ -z "$QUERY" ]]; then
+    echo "usage: ava-context <query> [N]" >&2
+    exit 2
+fi
+
+jq -s --arg q "$QUERY" --argjson n "$N" '
+    . as $all
+    | ($all | length) as $total
+    | ($q | ascii_downcase | split(" ") | map(select(length > 2))) as $tokens
+    | [ range(0; $total) as $i
+        | $all[$i]
+        | select(.role == "user")
+        | {
+            idx: $i,
+            user: .content,
+            assistant: ( ($all[$i+1] // {}) | .content // "" )
+          }
+      ]
+    | map(
+        . as $p
+        | (($p.user + " " + $p.assistant) | ascii_downcase) as $blob
+        | ([ $tokens[] | select($blob | contains(.)) ] | length) as $kw
+        | ( ($total - $p.idx) / ($total + 1) ) as $rec
+        | ( ($blob | length) / 500 ) as $len
+        | { score: ($kw * 3 + $rec + $len), user: $p.user, assistant: $p.assistant }
+      )
+    | sort_by(-.score)
+    | .[0:$n]
+    | .[]
+    | "user: \(.user)\nassistant: \(.assistant)\n"
+' -r

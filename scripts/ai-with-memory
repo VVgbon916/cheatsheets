@@ -13,6 +13,8 @@ MODEL="${AVALHLA_MODEL:-avalhla}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
 AUTO_READ_DIR="$MEMORY_DIR/auto-read"
+RANK_BIN="$HOME/projects/cheatsheets/scripts/ava-context"
+MEM_TURNS="${AVALHLA_MEMORY_TURNS:-8}"
 
 load_auto_read() {
     [[ -d "$AUTO_READ_DIR" ]] || return 0
@@ -88,7 +90,8 @@ while true; do
     AUTO_READ="$(load_auto_read)"
     HISTORY_TXT=""
     if [[ "$HISTORY" != "[]" ]]; then
-        HISTORY_TXT=$(echo "$HISTORY" | jq -r '.[-8:] | .[] | "\(.role): \(.content)"')
+        # convert in-memory json array to jsonl, feed to ranker
+        HISTORY_TXT=$(echo "$HISTORY" | jq -c '.[]' | "$RANK_BIN" "$line" "$MEM_TURNS" 2>/dev/null || true)
     fi
 
     FULL_PROMPT="[TASK]

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# ai-ask -- one-shot question to Avalhla with recent memory context
+# ai-ask -- one-shot question to Avalhla with ranked memory context
 # Usage: ai-ask "your question"
-#        ai-ask -n 5 "your question"    (load last N turns from today's session)
+#        ai-ask -n 5 "your question"    (top 5 ranked turns from today's session)
 set -Eeuo pipefail
 
 MEMORY_DIR="$HOME/.ai-memory"
@@ -12,17 +12,17 @@ OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVALHLA_MODEL:-avalhla}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
+RANK_BIN="$HOME/projects/cheatsheets/scripts/ava-context"
 
-TURNS=3
+TURNS="${AVALHLA_MEMORY_TURNS:-8}"
 
 if [[ "${1:-}" == "-n" ]]; then
-    TURNS="${2:-3}"
+    TURNS="${2:-$TURNS}"
     shift 2
 fi
 
 if [[ -z "${1:-}" ]]; then
     echo "Usage: ai-ask [-n N] \"your question\""
-    echo "  -n N   load last N turns from today's session (default 3)"
     exit 1
 fi
 
@@ -30,29 +30,35 @@ QUESTION="$*"
 
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     echo "X Ollama server not reachable"
-    echo "  Start it with: make ava-start"
     exit 1
 fi
 
-CONTEXT=""
 PROFILE=""
 [[ -f "$PROFILE_FILE" ]] && PROFILE="$(cat "$PROFILE_FILE")"
 
-if [[ -f "$SESSION_FILE" && "$TURNS" -gt 0 ]]; then
-    CONTEXT=$(tail -n $((TURNS * 2)) "$SESSION_FILE" 2>/dev/null \
-        | jq -r 'select(.content | length > 0) | "\(.role): \(.content)"' 2>/dev/null \
-        | head -c 2000 || true)
+CONTEXT=""
+if [[ -f "$SESSION_FILE" ]]; then
+    CONTEXT=$("$RANK_BIN" "$QUESTION" "$TURNS" < "$SESSION_FILE" 2>/dev/null || true)
 fi
 
-FULL_PROMPT=""
-[[ -n "$PROFILE" ]] && FULL_PROMPT="[USER PROFILE]
+FULL_PROMPT="[TASK]
+mode: ask
+goal: answer the user's question. Use CONTEXT if relevant. Do not emit [READ:] tags.
+
+"
+if [[ -n "$PROFILE" || -n "$CONTEXT" ]]; then
+    FULL_PROMPT+="[CONTEXT]
+"
+    [[ -n "$PROFILE" ]] && FULL_PROMPT+="--- user profile ---
 $PROFILE
 
 "
-[[ -n "$CONTEXT" ]] && FULL_PROMPT+="[RECENT CONTEXT]
+    [[ -n "$CONTEXT" ]] && FULL_PROMPT+="--- ranked turns ---
 $CONTEXT
 
 "
+fi
+
 FULL_PROMPT+="[USER]
 $QUESTION"
 
