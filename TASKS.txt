@@ -1,0 +1,31 @@
++==================================================================================================+
+|  T A S K S  //  Avalhla backlog                                                                   |
+|                                                                                                  |
+|  Format (one task per line):                                                                      |
+|    - [ ] <priority 1-5> <effort 1-5> <text>                                                       |
+|                                                                                                  |
+|  priority : 5 = urgent, 1 = someday                                                               |
+|  effort   : 5 = big,    1 = quick                                                                 |
+|  score    : priority * 2 - effort     (higher wins)                                               |
+|  done     : change [ ] -> [x]                                                                     |
+|                                                                                                  |
+|  Dawa > AwA < Avalhla  //  (^.-)                                                                  |
++==================================================================================================+
+
+-- ACTIVE --
+
+- [ ] 5 1 add ava-pick self-test to ava-verify
+- [ ] 4 2 wire ava-undo into ava-verify
+- [ ] 4 1 update README with ava-* commands
+- [ ] 3 3 add ava-time daily agenda
+- [ ] 3 2 add ava-dream idle reflection
+- [ ] 2 4 memory compaction for conversations > 30 days
+- [ ] 2 2 test ava-search preview pane more
+- [ ] 1 1 rename persona variant files to consistent scheme
+
+-- DONE --
+
+- [x] 5 5 build 13-step roadmap
+- [x] 5 2 migrate to ~/Avalhla single root
+- [x] 5 1 ava-audit banned-pattern scanner
+- [x] 4 1 ava-verify pipeline check

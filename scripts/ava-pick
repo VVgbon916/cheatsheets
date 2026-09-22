@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# ava-pick -- pick next task from TASKS.txt by score.
+#   ava-pick              top task by score
+#   ava-pick -n 5         top 5
+#   ava-pick --all        everything active
+#   ava-pick --done       mark top pick done
+set -Eeuo pipefail
+
+REPO="${AVA_TASKS_REPO:-$HOME/Avalhla/repo}"
+TASKS="${AVA_TASKS_FILE:-$REPO/TASKS.txt}"
+
+N=1
+MODE="list"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -n) N="$2"; shift 2 ;;
+        --all) N=9999; shift ;;
+        --done) MODE="done"; shift ;;
+        -h|--help)
+            echo "usage: ava-pick [-n N] [--all] [--done]"
+            echo "  tasks file: $TASKS"
+            exit 0 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+
+[[ -f "$TASKS" ]] || { echo "X no tasks file at $TASKS" >&2; exit 1; }
+
+# parse active:  - [ ] <pri> <eff> <text>
+PARSED="$(awk '
+    /^- \[ \][[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+/ {
+        pri = $4
+        eff = $5
+        txt = $0
+        sub(/^- \[ \][[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, "", txt)
+        score = pri * 2 - eff
+        printf "%03d\t%d\t%d\t%s\n", score, pri, eff, txt
+    }
+' "$TASKS" | sort -t$'\t' -k1,1 -nr)"
+
+if [[ -z "$PARSED" ]]; then
+    echo "ava-pick :: no active tasks in $TASKS"
+    exit 0
+fi
+
+if [[ "$MODE" == "done" ]]; then
+    TOP="$(printf '%s\n' "$PARSED" | head -1)"
+    TEXT="$(printf '%s' "$TOP" | awk -F'\t' '{print $4}')"
+    echo "ava-pick --done :: $TEXT"
+    ESC="$(printf '%s' "$TEXT" | sed 's/[&/\]/\\&/g')"
+    if grep -qF -- "- [x] " <(grep -F -- "$TEXT" "$TASKS"); then
+        echo "  already done"
+        exit 0
+    fi
+    sed -i "s|- \[ \] \([0-9]*\) \([0-9]*\) $ESC|- [x] \1 \2 $ESC|" "$TASKS"
+    echo "  marked done"
+    exit 0
+fi
+
+echo ""
+echo "== ava-pick :: $TASKS =="
+echo ""
+printf "  %-3s  %-3s  %-5s  %s\n" "pri" "eff" "score" "task"
+printf "  %-3s  %-3s  %-5s  %s\n" "---" "---" "-----" "----"
+printf '%s\n' "$PARSED" | head -n "$N" | awk -F'\t' '{
+    printf "  %-3s  %-3s  %-5d  %s\n", $2, $3, $1+0, $4
+}'
+echo ""
