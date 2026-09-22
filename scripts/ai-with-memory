@@ -32,7 +32,7 @@ $(cat "$f")
         total=$(( total + size ))
     done
     if [[ -n "$out" ]]; then
-        printf '%s' "$out"
+        printf '%s\n\n[SYSTEM] The above files are ALREADY LOADED. Do NOT output [READ: ...] tags. Answer the user directly using this context.' "$out"
     fi
     return 0
 }
