@@ -27,7 +27,7 @@ is_allowed() {
         [[ "$allowed" =~ ^# ]] && continue
         local allowed_real
         allowed_real=$(realpath -m "$allowed" 2>/dev/null || echo "$allowed")
-        if [[ "$real" == "$allowed_real"* ]]; then
+        if [[ "$real" == "$allowed_real" || "$real" == "$allowed_real/"* ]]; then
             return 0
         fi
     done < "$WHITELIST_FILE"

@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
-# ============================================================
-# 🧠 AVALHLA RECALL & SELF-REFLECTION ENGINE
-# ============================================================
+# ai-remember — she reflects on recent sessions, saves to reflections/
 set -Eeuo pipefail
 
-MODEL="${1:-avalhla}"
-MEMORY_DIR="$HOME/.ai-memory/conversations"
-USER_PROFILE="$HOME/.ai-memory/profiles/user-profile.txt"
+MODEL="${AVALHLA_MODEL:-avalhla}"
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MEMORY_DIR="$HOME/.ai-memory"
+CONV_DIR="$MEMORY_DIR/conversations"
+PROFILE="$MEMORY_DIR/profiles/user-profile.txt"
+REFLECT_DIR="$MEMORY_DIR/reflections"
+mkdir -p "$REFLECT_DIR"
 
 echo "🧠 Ava is reviewing her memories of Dawa..."
 
 MEMORIES=$(
     echo "=== USER SPECIFICATION ==="
-    cat "$USER_PROFILE" 2>/dev/null || true
+    cat "$PROFILE" 2>/dev/null || true
+    echo ""
     echo "=== RECENT CONVERSATIONS ==="
-    find "$MEMORY_DIR" -name "*.jsonl" -exec cat {} + 2>/dev/null | tail -25 || true
+    find "$CONV_DIR" -name "*.jsonl" -exec cat {} + 2>/dev/null | tail -25 || true
 )
 
 PROMPT="You are Avalhla, Dawa's cute nerdy bestie and senior systems engineer.
 Review your memory log below:
+
 $MEMORIES
 
 In 3 concise bullet points with your cute, witty bestie voice:
@@ -26,5 +30,14 @@ In 3 concise bullet points with your cute, witty bestie voice:
 2. Summarize the coding and system projects you are currently building together.
 3. Express your readiness to keep hacking together!"
 
-ollama run "$MODEL" "$PROMPT" 2>/dev/null || curl -s http://localhost:11434/api/generate \
-    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" '{model: $m, prompt: $p, stream: false}')" | jq -r '.response'
+RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+    '{model: $m, prompt: $p, stream: false}')" \
+    | jq -r '.response')
+
+echo ""
+echo "$RESPONSE"
+echo ""
+OUT="$REFLECT_DIR/$(date +%Y-%m-%d).md"
+echo "$RESPONSE" > "$OUT"
+echo "  ✿ saved to $OUT"
