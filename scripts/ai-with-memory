@@ -22,7 +22,7 @@ load_auto_read() {
         [[ -f "$f" ]] || continue
         local size
         size=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
-        if (( total + size > 32768 )); then
+        if (( total + size > 65536 )); then
             break
         fi
         out="${out}
