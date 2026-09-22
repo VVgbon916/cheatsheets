@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# ava-time -- daily agenda view.
+#   date/time, timer schedule, git HEAD, top 3 tasks, next reflection, last brief.
+set -Eeuo pipefail
+
+REPO="${AVA_TASKS_REPO:-$HOME/Avalhla/repo}"
+TASKS="${AVA_TASKS_FILE:-$REPO/TASKS.txt}"
+MEM="$HOME/Avalhla/memory"
+REFLECT_DIR="$MEM/reflections"
+
+echo ""
+echo "== ava-time :: $(date '+%A %Y-%m-%d  %H:%M %Z') =="
+echo ""
+
+# -- today at a glance --
+echo "-- now --"
+echo "  iso week : $(date '+%G-W%V')"
+echo "  uptime   : $(uptime -p 2>/dev/null | sed 's/^up //' || echo '?')"
+echo ""
+
+# -- timers --
+echo "-- scheduled --"
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user list-timers --no-pager 2>/dev/null | head -6 | sed 's/^/  /'
+fi
+echo ""
+
+# -- repo --
+if [[ -d "$REPO/.git" ]]; then
+    cd "$REPO"
+    echo "-- repo --"
+    echo "  branch  : $(git rev-parse --abbrev-ref HEAD)"
+    echo "  head    : $(git rev-parse --short HEAD)  $(git log -1 --format='%s' | cut -c1-60)"
+    DIRTY="$(git status --porcelain | wc -l)"
+    echo "  dirty   : $DIRTY file(s)"
+    AHEAD="$(git rev-list --count origin/$(git rev-parse --abbrev-ref HEAD)..HEAD 2>/dev/null || echo 0)"
+    BEHIND="$(git rev-list --count HEAD..origin/$(git rev-parse --abbrev-ref HEAD) 2>/dev/null || echo 0)"
+    echo "  remote  : ahead $AHEAD  behind $BEHIND"
+    echo ""
+fi
+
+# -- top 3 tasks --
+if [[ -f "$TASKS" ]]; then
+    echo "-- top 3 tasks --"
+    awk '
+        /^- \[ \][[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+/ {
+            pri = $4; eff = $5
+            txt = $0
+            sub(/^- \[ \][[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, "", txt)
+            score = pri * 2 - eff
+            printf "%03d\t%d\t%d\t%s\n", score, pri, eff, txt
+        }
+    ' "$TASKS" | sort -t$'\t' -k1,1 -nr | head -3 | awk -F'\t' '{
+        printf "  [%d]  pri %s eff %s  %s\n", $1+0, $2, $3, $4
+    }'
+    echo ""
+fi
+
+# -- reflection + brief --
+echo "-- memory --"
+LATEST_REFLECT="$(ls -1t "$REFLECT_DIR"/[0-9]*.md 2>/dev/null | head -1 || true)"
+if [[ -n "$LATEST_REFLECT" ]]; then
+    echo "  last reflection : $(basename "$LATEST_REFLECT")  ($(stat -c '%y' "$LATEST_REFLECT" | cut -d. -f1))"
+else
+    echo "  last reflection : (none)"
+fi
+if [[ -f "$REFLECT_DIR/last-run.log" ]]; then
+    echo "  last run log    : $(stat -c '%y' "$REFLECT_DIR/last-run.log" | cut -d. -f1)"
+fi
+echo "  conversations   : $(ls -1 "$MEM/conversations/" 2>/dev/null | wc -l) file(s)"
+echo "  kb              : $(ls -1 "$MEM/knowledge-base/" 2>/dev/null | wc -l) file(s)"
+echo ""
+
+# -- next reflection timer --
+NEXT_TIMER="$(systemctl --user list-timers ava-reflect.timer --no-pager 2>/dev/null | awk 'NR==2 {print $1, $2, $3}')"
+if [[ -n "${NEXT_TIMER:-}" ]]; then
+    echo "-- next reflection --"
+    echo "  $NEXT_TIMER"
+fi
+echo ""
