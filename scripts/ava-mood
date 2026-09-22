@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+# ava-mood -- Avalhla's present-time mood/color state.
+#   ava-mood                show current effective mood
+#   ava-mood auto           back to time-of-day auto (default)
+#   ava-mood reset          alias for auto
+#   ava-mood set "color -- tag"   manual override
+#   ava-mood ref <slug>     adopt color from imagination/HUMAN/<slug>.md
+#   ava-mood title          emit OSC escape for terminal title bar
+#   ava-mood prompt         emit a short colored tag for shell prompts
+#   ava-mood json           dump raw state
+set -Eeuo pipefail
+
+STATE_DIR="${AVA_MOOD_DIR:-$HOME/Avalhla/memory/state}"
+STATE="$STATE_DIR/mood.json"
+IMAGINE_HUMAN="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/repo/imagination}/HUMAN"
+
+mkdir -p "$STATE_DIR"
+
+# ----- palette -----
+palette_colors=(red orange yellow green blue purple)
+palette_labels=(
+    "alert and vivid"
+    "warm and inviting"
+    "curious and bright"
+    "calm and growing"
+    "quiet and deep"
+    "dreaming and strange"
+)
+# 256-color codes for prompt/title accents
+palette_ansi=(196 208 220 82 39 135)
+
+color_index() {
+    local c="$1"
+    for i in "${!palette_colors[@]}"; do
+        [[ "${palette_colors[$i]}" == "$c" ]] && { echo "$i"; return; }
+    done
+    echo -1
+}
+
+# ----- auto from time-of-day -----
+auto_pick() {
+    local h
+    h="$(date +%H)"
+    h=$((10#$h))
+    if   (( h >= 5  && h < 8  )); then echo "yellow"
+    elif (( h >= 8  && h < 14 )); then echo "green"
+    elif (( h >= 14 && h < 18 )); then echo "blue"
+    elif (( h >= 18 && h < 22 )); then echo "orange"
+    else                                echo "purple"
+    fi
+}
+
+label_for() {
+    local c="$1"
+    local i; i="$(color_index "$c")"
+    (( i >= 0 )) && echo "${palette_labels[$i]}" || echo ""
+}
+
+# ----- state I/O -----
+state_get() {
+    local key="$1"
+    [[ -f "$STATE" ]] || { echo ""; return; }
+    jq -r --arg k "$key" '.[$k] // ""' "$STATE" 2>/dev/null || echo ""
+}
+state_write() {
+    local mode="$1" color="$2" label="$3" ref="$4"
+    local now; now="$(date '+%Y-%m-%d %H:%M %Z')"
+    jq -n \
+        --arg mode "$mode" \
+        --arg color "$color" \
+        --arg label "$label" \
+        --arg ref "$ref" \
+        --arg since "$now" \
+        '{mode:$mode, color:$color, label:$label, ref:$ref, since:$since}' \
+        > "$STATE"
+}
+
+# ----- resolve effective mood -----
+resolve() {
+    local mode; mode="$(state_get mode)"
+    [[ -z "$mode" ]] && mode="auto"
+
+    case "$mode" in
+        manual)
+            local c l
+            c="$(state_get color)"; l="$(state_get label)"
+            printf '%s\t%s\t%s\t%s' "$mode" "$c" "$l" "$(state_get ref)"
+            ;;
+        ref)
+            local slug c l
+            slug="$(state_get ref)"
+            local f="$IMAGINE_HUMAN/${slug}.md"
+            if [[ -f "$f" ]]; then
+                c="$(grep -m1 '^> color:' "$f" | sed 's/^> color: *//' | awk '{print $1}')"
+                l="$(label_for "$c")"
+                [[ -z "$c" ]] && { c="$(auto_pick)"; l="$(label_for "$c")"; mode="auto"; }
+            else
+                c="$(auto_pick)"; l="$(label_for "$c")"; mode="auto"
+            fi
+            printf '%s\t%s\t%s\t%s' "$mode" "$c" "$l" "$slug"
+            ;;
+        *)
+            local c l
+            c="$(auto_pick)"; l="$(label_for "$c")"
+            printf 'auto\t%s\t%s\t' "$c" "$l"
+            ;;
+    esac
+}
+
+ansi_for() {
+    local c="$1"
+    local i; i="$(color_index "$c")"
+    (( i >= 0 )) && echo "${palette_ansi[$i]}" || echo "15"
+}
+
+# ----- commands -----
+cmd="${1:-show}"
+
+case "$cmd" in
+    show|"")
+        IFS=$'\t' read -r mode color label ref <<<"$(resolve)"
+        echo ""
+        echo "== ava-mood =="
+        printf "  mode  : %s\n" "$mode"
+        printf "  color : %s\n" "$color"
+        printf "  label : %s\n" "$label"
+        [[ -n "$ref" ]] && printf "  ref   : %s\n" "$ref"
+        printf "  state : %s\n" "$STATE"
+        echo ""
+        ;;
+    auto|reset)
+        state_write auto "$(auto_pick)" "$(label_for "$(auto_pick)")" ""
+        echo "ava-mood :: auto (present time)"
+        ;;
+    set)
+        shift
+        arg="$*"
+        c="$(printf '%s' "$arg" | awk '{print $1}')"
+        l="$(printf '%s' "$arg" | sed 's/^[^ ]* *//' | sed 's/^-- *//; s/^- *//')"
+        if [[ "$(color_index "$c")" == "-1" ]]; then
+            echo "X unknown color: $c" >&2
+            echo "  valid: ${palette_colors[*]}" >&2
+            exit 1
+        fi
+        [[ -z "$l" ]] && l="$(label_for "$c")"
+        state_write manual "$c" "$l" ""
+        echo "ava-mood :: manual -> $c -- $l"
+        ;;
+    ref)
+        slug="${2:-}"
+        [[ -z "$slug" ]] && { echo "usage: ava-mood ref <imagination-slug>" >&2; exit 2; }
+        if [[ ! -f "$IMAGINE_HUMAN/${slug}.md" ]]; then
+            echo "X no imagination entry: $slug" >&2
+            exit 1
+        fi
+        c="$(grep -m1 '^> color:' "$IMAGINE_HUMAN/${slug}.md" | sed 's/^> color: *//' | awk '{print $1}')"
+        state_write ref "$c" "$(label_for "$c")" "$slug"
+        echo "ava-mood :: ref -> $slug  ($c)"
+        ;;
+    title)
+        IFS=$'\t' read -r _ color label _ <<<"$(resolve)"
+        printf '\033]0;Dawa > AwA < Avalhla  //  %s -- %s\007' "$color" "$label"
+        ;;
+    prompt)
+        IFS=$'\t' read -r _ color _ _ <<<"$(resolve)"
+        ansi="$(ansi_for "$color")"
+        printf '\033[38;5;%sm*\033[0m' "$ansi"
+        ;;
+    json)
+        cat "$STATE" 2>/dev/null || echo '{}'
+        ;;
+    -h|--help)
+        cat <<'EOT'
+ava-mood [auto|reset]            time-of-day auto (default)
+ava-mood set "color -- tag"      manual override
+ava-mood ref <slug>              adopt color from imagination entry
+ava-mood show                    print current mood
+ava-mood title                   emit OSC title sequence
+ava-mood prompt                  emit colored prompt tag
+ava-mood json                    dump state
+EOT
+        ;;
+    *)
+        echo "unknown: $cmd" >&2
+        exit 2
+        ;;
+esac
