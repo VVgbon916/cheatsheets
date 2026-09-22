@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# ava-diff -- show what changed since last review, ask avalhla-review.
+# Usage: ava-diff <file> [--since <ref>]
+#        ava-diff <file> --no-cache
+# Caches last reviewed sha256 per file in ~/.ai-memory/reviewed/<slug>.sha
+set -Eeuo pipefail
+
+REPO="${AVA_DIFF_REPO:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
+CACHE_DIR="$HOME/.ai-memory/reviewed"
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="avalhla-review"
+SINCE="HEAD~1"
+USE_CACHE=1
+MAX_BYTES=40000
+
+FILE=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --since)   SINCE="$2"; shift 2 ;;
+        --no-cache) USE_CACHE=0; shift ;;
+        -h|--help)
+            echo "usage: ava-diff <file> [--since <ref>] [--no-cache]"
+            exit 0 ;;
+        *)
+            if [[ -z "$FILE" ]]; then FILE="$1"; else echo "extra arg: $1" >&2; exit 2; fi
+            shift ;;
+    esac
+done
+
+if [[ -z "$FILE" ]]; then
+    echo "usage: ava-diff <file>" >&2
+    exit 2
+fi
+
+# resolve file: as given, or relative to repo root
+if [[ ! -f "$FILE" ]]; then
+    if [[ -f "$REPO/$FILE" ]]; then
+        FILE="$REPO/$FILE"
+    else
+        echo "X not a file: $FILE" >&2
+        exit 1
+    fi
+fi
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable" >&2
+    exit 1
+fi
+
+mkdir -p "$CACHE_DIR"
+SLUG="$(echo "$FILE" | tr '/ ' '__')"
+SLUG="$(echo "$SLUG" | tr -cd 'A-Za-z0-9._-')"
+CACHE_FILE="$CACHE_DIR/${SLUG}.sha"
+
+CUR_HASH="$(sha256sum "$FILE" | awk '{print $1}')"
+PREV_HASH=""
+[[ -f "$CACHE_FILE" ]] && PREV_HASH="$(cat "$CACHE_FILE")"
+
+if (( USE_CACHE == 1 )) && [[ "$CUR_HASH" == "$PREV_HASH" ]]; then
+    echo ""
+    echo "ava-diff :: $FILE"
+    echo "  unchanged since last review (sha256 $CUR_HASH)"
+    echo ""
+    exit 0
+fi
+
+echo ""
+echo "== ava-diff :: $FILE =="
+echo "  since   : $SINCE"
+if [[ -n "$PREV_HASH" ]]; then
+    echo "  prev    : $PREV_HASH"
+fi
+echo "  current : $CUR_HASH"
+echo ""
+
+DIFF="$(git -C "$REPO" --no-pager diff "$SINCE" -- "$FILE" 2>/dev/null | head -c "$MAX_BYTES" || true)"
+
+if [[ -z "$DIFF" ]]; then
+    echo "  (no git diff vs $SINCE -- file may be new or unchanged in git)"
+    DIFF="(no git diff available for $FILE vs $SINCE)"
+fi
+
+PROMPT="[TASK]
+mode: review
+goal: audit the DIFF below. Emit exactly these five blocks in this order:
+      BUGS / SECURITY / PERF / STYLE / VERDICT.
+      One bullet per finding: file:line -- problem -- fix.
+      Clean block = \"none\". Do not restate code.
+      In VERDICT, summarize what changed in one line, then: ship | fix-first | rewrite.
+
+[CONTEXT]
+file: $FILE
+since: $SINCE
+
+[USER]
+$DIFF"
+
+RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+    '{model: $m, prompt: $p, stream: false}')" \
+    | jq -r '.response')"
+
+echo "$RESPONSE"
+echo ""
+
+if (( USE_CACHE == 1 )); then
+    echo "$CUR_HASH" > "$CACHE_FILE"
+    echo "  cache updated: $CACHE_FILE"
+fi
+echo ""
