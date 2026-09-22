@@ -48,7 +48,7 @@ rebuild_human_index() {
         for f in "$H"/*.md; do
             [[ -f "$f" ]] || continue
             [[ "$(basename "$f")" == "index.md" ]] && continue
-            title="$(grep -m1 '^# ' "$f" | sed 's/^# //')"
+            title="$(grep -m1 '^# ' "$f" | sed 's/^# //' | tr -s ' ')"
             ref="$(grep -m1 '^> ref:' "$f" | sed 's/^> ref: *//' | awk '{print $1" "$2}')"
             printf -- '- [%s](%s.md)  -- %s\n' "$title" "$(basename "$f" .md)" "$ref"
         done
