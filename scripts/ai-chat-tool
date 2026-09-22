@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ai-chat-tool -- chat with Avalhla, allow her to read files via the bridge
+# ai-chat-tool -- chat with Avalhla, she can request file reads via the bridge
+# Prompt layers: [TASK] [CONTEXT] [USER]  (IDENTITY lives in Modelfile)
 set -Eeuo pipefail
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
@@ -9,7 +10,7 @@ MAX_TURNS=6
 
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     echo "X Ollama server not reachable"
-    echo "  Start it: systemctl --user start ollama.service"
+    echo "  Start: systemctl --user start ollama.service"
     exit 1
 fi
 
@@ -30,14 +31,35 @@ while true; do
         "") continue ;;
     esac
 
-    FULL_PROMPT="${HISTORY}[USER]
-${line}"
-
     TURN=0
-    SEEN=""              # track ALL requested paths this turn
+    SEEN=""
+    LAST_READ_CONTENT=""
 
     while [[ $TURN -lt $MAX_TURNS ]]; do
         TURN=$((TURN + 1))
+
+        # ---- LAYERED PROMPT ----
+        FULL_PROMPT="[TASK]
+mode: chat-with-reads
+goal: answer the user. If you need a file, output exactly one line: [READ: <arg>]
+      Allowed: [READ: path]  [READ: --ls dir]  [READ: --grep pattern]
+      If CONTEXT already has the content, answer now. Do not invent file contents.
+
+"
+
+        if [[ -n "$HISTORY" || -n "$LAST_READ_CONTENT" ]]; then
+            FULL_PROMPT+="[CONTEXT]
+"
+            [[ -n "$HISTORY" ]] && FULL_PROMPT+="--- recent turns ---
+$HISTORY"
+            [[ -n "$LAST_READ_CONTENT" ]] && FULL_PROMPT+="--- last read result ---
+$LAST_READ_CONTENT
+
+"
+        fi
+
+        FULL_PROMPT+="[USER]
+$line"
 
         RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
             -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
@@ -47,54 +69,33 @@ ${line}"
         if echo "$RESPONSE" | grep -q '\[READ: '; then
             READ_ARG=$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')
 
-            # Block ALL repeats except --ls / --grep
             if [[ "$READ_ARG" != --ls* && "$READ_ARG" != --grep* ]]; then
                 if echo "$SEEN" | grep -qF "|${READ_ARG}|"; then
                     echo ""
                     echo "  [blocked repeat: $READ_ARG]"
-                    FULL_PROMPT="${FULL_PROMPT}
-
-[ASSISTANT]
-${RESPONSE}
-
-[SYSTEM]
-You already requested '${READ_ARG}' in this turn. Do NOT request it again. You have the content. Answer the user's question NOW using that content. Do not output any more [READ: ...] tags."
+                    LAST_READ_CONTENT="(already read: $READ_ARG -- do NOT request again. Answer now.)"
                     continue
                 fi
             fi
 
             SEEN="${SEEN}|${READ_ARG}|"
-
             echo ""
             echo "  [ava reads: $READ_ARG]"
 
             RESULT=$("$READ_BIN" "$READ_ARG" 2>&1 || echo "X read failed: $READ_ARG")
             RESULT=$(echo "$RESULT" | head -c 4000)
-
-            FULL_PROMPT="${FULL_PROMPT}
-
-[ASSISTANT]
-${RESPONSE}
-
-[READ RESULT: ${READ_ARG}]
-${RESULT}
-[END READ]
-
-[SYSTEM]
-File content received. Answer the user's original question NOW using the content above. Do NOT request any more reads unless the content clearly did not answer the question. Output your final answer now."
+            LAST_READ_CONTENT="$RESULT"
             continue
         fi
 
         echo ""
         echo "$RESPONSE"
         echo ""
-        HISTORY="${HISTORY}[USER]
-${line}
-
-[ASSISTANT]
-${RESPONSE}
+        HISTORY="${HISTORY}user: ${line}
+assistant: ${RESPONSE}
 
 "
+        LAST_READ_CONTENT=""
         break
     done
 

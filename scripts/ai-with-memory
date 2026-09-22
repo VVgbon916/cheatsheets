@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ai-with-memory — persistent chat with Avalhla across sessions
+# ai-with-memory -- persistent chat with Avalhla across sessions
+# Prompt layers: [TASK] [CONTEXT] [USER]  (IDENTITY lives in Modelfile)
 set -Eeuo pipefail
 
 MEMORY_DIR="$HOME/.ai-memory"
@@ -13,7 +14,6 @@ SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
 AUTO_READ_DIR="$MEMORY_DIR/auto-read"
 
-# ── Load auto-read box (files Ava always sees) ──
 load_auto_read() {
     [[ -d "$AUTO_READ_DIR" ]] || return 0
     local out=""
@@ -26,34 +26,26 @@ load_auto_read() {
             break
         fi
         out="${out}
-──── $(basename "$f") ────
+--- $(basename "$f") ---
 $(cat "$f")
 "
         total=$(( total + size ))
     done
-    if [[ -n "$out" ]]; then
-        printf '%s\n\n[SYSTEM] The above files are ALREADY LOADED. Do NOT output [READ: ...] tags. Answer the user directly using this context.' "$out"
-    fi
+    [[ -n "$out" ]] && printf '%s' "$out"
     return 0
 }
 
-# ── Ensure dirs exist ──
 mkdir -p "$CONV_DIR" "$KB_DIR" "$PROFILE_DIR"
 
-# ── Load profile ──
 PROFILE=""
-if [[ -f "$PROFILE_FILE" ]]; then
-    PROFILE="$(cat "$PROFILE_FILE")"
-fi
+[[ -f "$PROFILE_FILE" ]] && PROFILE="$(cat "$PROFILE_FILE")"
 
-# ── Check server ──
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
-    echo "✗ Ollama server not reachable at $OLLAMA_HOST"
-    echo "  Start it with: avastart"
+    echo "X Ollama server not reachable at $OLLAMA_HOST"
+    echo "  Start: avastart"
     exit 1
 fi
 
-# ── Greeting from last session ──
 LAST_TOPIC=""
 if [[ -f "$SESSION_FILE" ]]; then
     LAST_TOPIC=$(tail -n 20 "$SESSION_FILE" 2>/dev/null \
@@ -62,96 +54,69 @@ if [[ -f "$SESSION_FILE" ]]; then
 fi
 
 echo ""
-echo "╭─────────────────────────────────────────────────────────────╮"
-echo "│  Avalhla :: memory session                                  │"
-echo "│  Date   : $(date +%Y-%m-%d)                                        │"
-echo "│  File   : $SESSION_FILE"
-echo "╰─────────────────────────────────────────────────────────────╯"
-
-if [[ -n "$LAST_TOPIC" ]]; then
-    echo ""
-    echo "  Last time we talked about:"
-    echo "  → $LAST_TOPIC"
-fi
-
+echo "Avalhla :: memory session"
+echo "  Date : $(date +%Y-%m-%d)"
+echo "  File : $SESSION_FILE"
+[[ -n "$LAST_TOPIC" ]] && { echo ""; echo "  Last time: $LAST_TOPIC"; }
 echo ""
 echo "  Commands: /bye exit  /clear reset  /history last 10  /mem show profile"
 echo ""
 
-# ── Chat loop ──
 HISTORY="[]"
 
 while true; do
-    printf "\n\033[1;36m>>>\033[0m "
+    printf "\n>>> "
     IFS= read -r line || break
 
-    # ── Slash commands ──
     case "$line" in
         /bye|/exit)
             echo ""
-            echo "  ✿ Session saved to $SESSION_FILE"
+            echo "  Session saved to $SESSION_FILE"
             break
             ;;
-        /clear)
-            HISTORY="[]"
-            echo "  ✿ Context cleared"
-            continue
-            ;;
-        /history)
-            echo "$HISTORY" | jq -r '.[] | "\(.role): \(.content)"' | tail -n 20
-            continue
-            ;;
+        /clear)   HISTORY="[]"; echo "  Context cleared"; continue ;;
+        /history) echo "$HISTORY" | jq -r '.[] | "\(.role): \(.content)"' | tail -n 20; continue ;;
         /mem)
             echo "  Profile: $PROFILE_FILE"
-            if [[ -n "$PROFILE" ]]; then
-                echo "$PROFILE" | head -n 15
-            else
-                echo "  (no profile yet — copy persona/user-profile.txt.example)"
-            fi
+            if [[ -n "$PROFILE" ]]; then echo "$PROFILE" | head -n 15; else echo "  (no profile yet)"; fi
             continue
             ;;
-        "")
-            continue
-            ;;
+        "") continue ;;
     esac
 
-    # ── Build prompt with history + profile + auto-read ──
+    # ---- LAYERED PROMPT ----
     AUTO_READ="$(load_auto_read)"
-    FULL_PROMPT="$line"
-
-    if [[ -n "$AUTO_READ" && -n "$PROFILE" ]]; then
-        FULL_PROMPT="[AUTO-READ CONTEXT]
-$AUTO_READ
-
-[USER PROFILE]
-$PROFILE
-
-[USER]
-$line"
-    elif [[ -n "$AUTO_READ" ]]; then
-        FULL_PROMPT="[AUTO-READ CONTEXT]
-$AUTO_READ
-
-[USER]
-$line"
-    elif [[ -n "$PROFILE" ]]; then
-        FULL_PROMPT="[USER PROFILE]
-$PROFILE
-
-[USER]
-$line"
-    fi
-
-    # ── Add previous turns (last 8) ──
+    HISTORY_TXT=""
     if [[ "$HISTORY" != "[]" ]]; then
-        CONTEXT=$(echo "$HISTORY" | jq -r '.[-8:] | .[] | "\(.role): \(.content)"')
-        FULL_PROMPT="$CONTEXT
-
-[USER]
-$line"
+        HISTORY_TXT=$(echo "$HISTORY" | jq -r '.[-8:] | .[] | "\(.role): \(.content)"')
     fi
 
-    # ── Call Ollama ──
+    FULL_PROMPT="[TASK]
+mode: chat
+goal: respond to the user. Use CONTEXT if present. Do not emit [READ:] tags.
+
+"
+
+    if [[ -n "$AUTO_READ" || -n "$PROFILE" || -n "$HISTORY_TXT" ]]; then
+        FULL_PROMPT+="[CONTEXT]
+"
+        [[ -n "$AUTO_READ" ]]   && FULL_PROMPT+="--- auto-read ---
+$AUTO_READ
+
+"
+        [[ -n "$PROFILE" ]]     && FULL_PROMPT+="--- user profile ---
+$PROFILE
+
+"
+        [[ -n "$HISTORY_TXT" ]] && FULL_PROMPT+="--- recent turns ---
+$HISTORY_TXT
+
+"
+    fi
+
+    FULL_PROMPT+="[USER]
+$line"
+
     RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
         -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
         '{model: $m, prompt: $p, stream: false}')" \
@@ -160,11 +125,9 @@ $line"
     echo ""
     echo "$RESPONSE"
 
-    # ── Save to session file ──
     jq -cn --arg r "user" --arg c "$line" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
     jq -cn --arg r "assistant" --arg c "$RESPONSE" '{role: $r, content: $c, ts: now}' >> "$SESSION_FILE"
 
-    # ── Update in-memory history ──
     HISTORY=$(echo "$HISTORY" | jq -c \
         --arg u "$line" --arg a "$RESPONSE" \
         '. + [{role:"user", content:$u}, {role:"assistant", content:$a}]')
