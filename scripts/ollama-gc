@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# ollama-gc — remove orphan blobs left by `ollama rm`
+set -Eeuo pipefail
+cd ~/.ollama/models || exit 1
+
+REFERENCED=$(find manifests -type f -exec cat {} \; 2>/dev/null \
+    | grep -oE 'sha256:[a-f0-9]+' | sort -u | sed 's/sha256://')
+
+freed=0
+for f in blobs/sha256-*; do
+    h=$(basename "$f" | sed 's/sha256-//')
+    if ! echo "$REFERENCED" | grep -q "$h"; then
+        sz=$(stat -c '%s' "$f")
+        rm -f "$f"
+        freed=$((freed + sz))
+    fi
+done
+
+systemctl --user restart ollama.service
+echo "✅ freed $(( freed / 1024 / 1024 )) MB"
+du -sh ~/.ollama
