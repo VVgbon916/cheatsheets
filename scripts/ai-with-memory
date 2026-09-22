@@ -11,6 +11,31 @@ OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVALHLA_MODEL:-avalhla}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
+AUTO_READ_DIR="$MEMORY_DIR/auto-read"
+
+# ── Load auto-read box (files Ava always sees) ──
+load_auto_read() {
+    [[ -d "$AUTO_READ_DIR" ]] || return 0
+    local out=""
+    local total=0
+    for f in "$AUTO_READ_DIR"/*; do
+        [[ -f "$f" ]] || continue
+        local size
+        size=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
+        if (( total + size > 32768 )); then
+            break
+        fi
+        out="${out}
+──── $(basename "$f") ────
+$(cat "$f")
+"
+        total=$(( total + size ))
+    done
+    if [[ -n "$out" ]]; then
+        printf '%s' "$out"
+    fi
+    return 0
+}
 
 # ── Ensure dirs exist ──
 mkdir -p "$CONV_DIR" "$KB_DIR" "$PROFILE_DIR"
@@ -90,9 +115,26 @@ while true; do
             ;;
     esac
 
-    # ── Build prompt with history + profile ──
+    # ── Build prompt with history + profile + auto-read ──
+    AUTO_READ="$(load_auto_read)"
     FULL_PROMPT="$line"
-    if [[ -n "$PROFILE" ]]; then
+
+    if [[ -n "$AUTO_READ" && -n "$PROFILE" ]]; then
+        FULL_PROMPT="[AUTO-READ CONTEXT]
+$AUTO_READ
+
+[USER PROFILE]
+$PROFILE
+
+[USER]
+$line"
+    elif [[ -n "$AUTO_READ" ]]; then
+        FULL_PROMPT="[AUTO-READ CONTEXT]
+$AUTO_READ
+
+[USER]
+$line"
+    elif [[ -n "$PROFILE" ]]; then
         FULL_PROMPT="[USER PROFILE]
 $PROFILE
 

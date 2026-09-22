@@ -1,0 +1,397 @@
+# ═══════════════════════════════════════════════════════════════
+#  Dawa's ZSH config — Dawa > AwA < Avalhla  //  (^.-)
+#  Migrated from .bashrc on 2026-09-21
+#  Backup: ~/.zshrc.backup-20260921-2059
+# ═══════════════════════════════════════════════════════════════
+
+# ── Oh My Zsh ────────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+
+# ── Plugins ──────────────────────────────────────────────────
+# Order matters: syntax-highlighting MUST be last.
+plugins=(
+  git
+  you-should-use
+  history-substring-search
+  zsh-autosuggestions
+  zsh-completions
+  fzf-tab
+  zsh-autopair
+  zsh-syntax-highlighting
+)
+
+source "$ZSH/oh-my-zsh.sh"
+
+# ── Zsh options ──────────────────────────────────────────────
+setopt AUTO_CD                    # type "dir" to cd into it
+setopt AUTO_PUSHD                 # cd pushes to dir stack
+setopt PUSHD_IGNORE_DUPS          # no dup entries in stack
+setopt SHARE_HISTORY              # all terminals share history
+setopt HIST_IGNORE_ALL_DUPS       # no duplicate commands
+setopt HIST_IGNORE_SPACE          # lines starting with space aren't saved
+setopt HIST_REDUCE_BLANKS         # trim extra spaces
+setopt INC_APPEND_HISTORY         # save as you go, not on exit
+setopt EXTENDED_HISTORY           # timestamp in history
+setopt INTERACTIVE_COMMENTS       # # comments allowed in interactive
+
+# ── History ──────────────────────────────────────────────────
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE="$HOME/.zsh_history"
+
+# ── Completion styling ───────────────────────────────────────
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+
+# ── Key bindings ─────────────────────────────────────────────
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey -M emacs '^P' history-substring-search-up
+bindkey -M emacs '^N' history-substring-search-down
+
+# fzf keybindings (Ctrl+R history, Ctrl+T files, Alt+C cd)
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# ── PATH + environment ───────────────────────────────────────
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+
+# Java (default 21)
+export JAVA_HOME=/opt/java-21
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# GitHub token (silent fail if not logged in)
+if command -v gh >/dev/null 2>&1; then
+    export GH_TOKEN="$(gh auth token 2>/dev/null || true)"
+fi
+
+# Avalhla environment
+export OLLAMA_HOST="http://localhost:11434"
+export AVALHLA_MODEL="avalhla"
+
+# ═══════════════════════════════════════════════════════════════
+#  JAVA SWITCHERS
+# ═══════════════════════════════════════════════════════════════
+
+java21() {
+    export JAVA_HOME=/opt/java-21
+    export PATH=$(echo "$PATH" | sed "s|/usr/lib/jvm/java-25-openjdk/bin:||g; s|/opt/java-21/bin:||g")
+    export PATH="$JAVA_HOME/bin:$PATH"
+    echo "☕ Java 21 active: $JAVA_HOME"
+    java -version 2>&1 | head -1
+}
+
+java25() {
+    export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
+    export PATH=$(echo "$PATH" | sed "s|/usr/lib/jvm/java-25-openjdk/bin:||g; s|/opt/java-21/bin:||g")
+    export PATH="$JAVA_HOME/bin:$PATH"
+    echo "☕ Java 25 active: $JAVA_HOME"
+    java -version 2>&1 | head -1
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  ALIASES (migrated from .bashrc, deduped)
+# ═══════════════════════════════════════════════════════════════
+
+# Repo + boards
+alias repo='cd ~/projects/cheatsheets'
+alias board='cat ~/projects/cheatsheets/BOARD.txt'
+alias avacheat='cat ~/projects/cheatsheets/AVALHLA_CHEATSHEET.txt'
+alias avacommands='cat ~/projects/cheatsheets/AVALHLA_COMMANDS.txt'
+alias order='cat ~/projects/cheatsheets/Dawa_CheatAvalhlaOrder.md'
+alias cheatsheet-prompt='cat ~/projects/cheatsheets/PROMPT_framed_cheatsheet.txt'
+
+# Ava server control
+alias avastart='~/projects/cheatsheets/scripts/start-avalhla.sh'
+alias avastop='systemctl --user stop ollama.service'
+
+# Ava chat + tools
+alias ai-chat='~/projects/cheatsheets/scripts/ai-with-memory'
+alias ai-learn='~/projects/cheatsheets/scripts/ai-learn'
+alias ai-remember='~/projects/cheatsheets/scripts/ai-remember'
+alias ai-tool='~/projects/cheatsheets/scripts/ai-chat-tool'
+alias ask='~/projects/cheatsheets/scripts/ai-ask'
+
+# System
+alias topgrade='topgrade --disable system'
+
+# ═══════════════════════════════════════════════════════════════
+#  FUNCTIONS (migrated from .bashrc)
+# ═══════════════════════════════════════════════════════════════
+
+ai() {
+    if [ -z "${*:-}" ]; then
+        echo 'Usage: ai "your question here"'
+        return 1
+    fi
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" --arg p "$*" \
+        '{model: $m, prompt: $p, stream: false}')" \
+        | jq -r '.response'
+}
+
+review() {
+    if [ -z "${1:-}" ] || [ ! -f "$1" ]; then
+        echo "Usage: review <file_path>"
+        return 1
+    fi
+    local content
+    content="$(cat "$1")"
+    echo "🔍 Avalhla is reviewing $1..."
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" --arg c "$content" --arg f "$1" \
+        '{model: $m, prompt: ("Review this file (" + $f + ") for bugs, security risks, memory leaks, and performance issues. Suggest clear, minimal fixes:\n\n" + $c), stream: false}')" \
+        | jq -r '.response'
+}
+
+research() {
+    if [ -z "${1:-}" ]; then
+        echo "Usage: research <url> [specific question]"
+        return 1
+    fi
+    local url="$1"
+    shift || true
+    local extra="${*:-Summarize key API patterns, classes, and syntax needed to implement this in Java/Bash.}"
+    local tmp="/tmp/ai_web_doc.txt"
+
+    echo "🌐 Fetching $url..."
+    curl -sL "$url" | sed -e 's/<[^>]*>/ /g' | tr -s ' ' > "$tmp"
+    head -n 300 "$tmp" > "${tmp}.trimmed"
+
+    echo "🤖 Avalhla is analyzing documentation..."
+    curl -s "${OLLAMA_HOST}/api/generate" \
+        -d "$(jq -n --arg m "$AVALHLA_MODEL" \
+            --arg c "$(cat "${tmp}.trimmed")" --arg p "$extra" \
+        '{model: $m, prompt: ($p + "\n\nDOCUMENTATION EXCERPT:\n" + $c), stream: false}')" \
+        | jq -r '.response'
+}
+
+vv() {
+    local repo="$HOME/projects/cheatsheets"
+    [[ -d "$repo" ]] || { echo "✗ repo not found at $repo"; return 1; }
+    ( cd "$repo" && make "$@" )
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  AVA FUNCTIONS  //  the new goodies
+# ═══════════════════════════════════════════════════════════════
+
+# One-line status: container + model + ctx + memory
+ava-status() {
+    local svc model_ok mem_size ctx
+    svc=$(systemctl --user is-active ollama.service 2>/dev/null)
+    if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        model_ok="✓ up"
+    else
+        model_ok="✗ down"
+    fi
+    mem_size=$(du -sh ~/.ai-memory 2>/dev/null | cut -f1)
+    ctx=$(ollama show "$AVALHLA_MODEL" --parameters 2>/dev/null | grep num_ctx | awk '{print $NF}')
+    echo "Ava :: svc=$svc api=$model_ok ctx=${ctx:-?} mem=${mem_size:-0}"
+}
+
+# Shortest possible one-shot
+ava-quick() {
+    if [ -z "${*:-}" ]; then
+        echo 'Usage: ava-quick "your question"'
+        return 1
+    fi
+    ollama run "$AVALHLA_MODEL" "$*"
+}
+
+# Tail the ollama service log
+ava-log() {
+    journalctl --user -u ollama.service -f -n 50
+}
+
+# Teach Ava a file (wrapper + completion helper)
+ava-teach() {
+    if [ -z "${1:-}" ]; then
+        echo 'Usage: ava-teach <file|dir>'
+        return 1
+    fi
+    ~/projects/cheatsheets/scripts/ai-learn "$@"
+}
+
+# Pretty memory viewer
+ava-mem() {
+    local mem="$HOME/.ai-memory"
+    echo "╭─────────────────────────────────────────────╮"
+    echo "│  Ava's Memory                               │"
+    echo "╰─────────────────────────────────────────────╯"
+    echo ""
+    echo "  Conversations:"
+    if compgen -G "$mem/conversations/*.jsonl" >/dev/null; then
+        for f in "$mem/conversations"/*.jsonl; do
+            local lines size
+            lines=$(wc -l < "$f")
+            size=$(du -h "$f" | cut -f1)
+            printf "    %-30s  %5s lines  %s\n" "$(basename "$f")" "$lines" "$size"
+        done
+    else
+        echo "    (none yet)"
+    fi
+    echo ""
+    echo "  Knowledge Base:"
+    local kb_files
+    kb_files=$(find "$mem/knowledge-base" -type f 2>/dev/null | wc -l)
+    printf "    %-30s  %s files\n" "$mem/knowledge-base" "$kb_files"
+    echo ""
+    echo "  Auto-Read Box:"
+    if [ -d "$mem/auto-read" ] && [ "$(ls -A "$mem/auto-read" 2>/dev/null)" ]; then
+        for f in "$mem/auto-read"/*; do
+            [ -f "$f" ] || continue
+            local size
+            size=$(du -h "$f" | cut -f1)
+            printf "    %-30s  %s\n" "$(basename "$f")" "$size"
+        done
+    else
+        echo "    (empty)"
+    fi
+    echo ""
+    echo "  Reflections:"
+    local refl
+    refl=$(find "$mem/reflections" -type f 2>/dev/null | wc -l)
+    printf "    %-30s  %s files\n" "$mem/reflections" "$refl"
+    echo ""
+}
+
+# Show or switch context
+ava-ctx() {
+    local ctx="${1:-}"
+    if [ -z "$ctx" ]; then
+        echo "Current context:"
+        ollama show "$AVALHLA_MODEL" --parameters 2>/dev/null | grep -E "num_ctx|num_predict"
+        echo ""
+        echo "Usage: ava-ctx 8192 | 16384 | 32768"
+        return 0
+    fi
+    echo "To change context, edit persona/avalhla.Modelfile and rebuild:"
+    echo "  sed -i 's/^PARAMETER num_ctx .*/PARAMETER num_ctx $ctx/' ~/projects/cheatsheets/persona/avalhla.Modelfile"
+    echo "  ollama create $AVALHLA_MODEL -f ~/projects/cheatsheets/persona/avalhla.Modelfile"
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  AVA DROP-BOX  //  files she always reads
+# ═══════════════════════════════════════════════════════════════
+
+ava-autoread() {
+    local box="$HOME/.ai-memory/auto-read"
+    mkdir -p "$box"
+
+    case "${1:-}" in
+        ""|--help|-h)
+            echo "ava-autoread :: manage Ava's always-on reading list"
+            echo ""
+            echo "  ava-autoread <file>       add a file to the box"
+            echo "  ava-autoread --list       show what's in the box"
+            echo "  ava-autoread --rm <name>  remove a file"
+            echo "  ava-autoread --clear      empty the box"
+            echo "  ava-autoread --show       print the combined block"
+            echo ""
+            echo "Box: $box"
+            echo "Files here are prepended to every ai-chat / ai-tool / ask."
+            return 0
+            ;;
+        --list)
+            echo "╭─ Ava Auto-Read Box ─────────────────────────"
+            if [ "$(ls -A "$box" 2>/dev/null)" ]; then
+                for f in "$box"/*; do
+                    [ -f "$f" ] || continue
+                    printf "│  %-30s  %s\n" "$(basename "$f")" "$(du -h "$f" | cut -f1)"
+                done
+            else
+                echo "│  (empty)"
+            fi
+            echo "╰─────────────────────────────────────────────"
+            return 0
+            ;;
+        --rm)
+            if [ -z "${2:-}" ]; then
+                echo "Usage: ava-autoread --rm <filename>"
+                return 1
+            fi
+            rm -f "$box/$2" && echo "✓ removed: $2"
+            return 0
+            ;;
+        --clear)
+            rm -f "$box"/*
+            echo "✓ box cleared"
+            return 0
+            ;;
+        --show)
+            if [ "$(ls -A "$box" 2>/dev/null)" ]; then
+                for f in "$box"/*; do
+                    [ -f "$f" ] || continue
+                    echo "──── $(basename "$f") ────"
+                    cat "$f"
+                    echo ""
+                done
+            else
+                echo "(box is empty)"
+            fi
+            return 0
+            ;;
+        *)
+            if [ ! -f "$1" ]; then
+                echo "✗ File not found: $1"
+                return 1
+            fi
+            cp "$1" "$box/$(basename "$1")"
+            echo "✓ added to box: $(basename "$1")"
+            echo "  Ava will read this on every chat."
+            ;;
+    esac
+}
+
+# Ava help summary
+ava-help() {
+    cat <<'AVAHELP'
+╭─ Ava :: Quick Reference ────────────────────────────────────╮
+│                                                              │
+│  Server                                                      │
+│    avastart              start ollama container              │
+│    avastop               stop (frees VRAM)                   │
+│    ava-status            one-line: svc + api + ctx + mem     │
+│    ava-log               tail ollama service log             │
+│                                                              │
+│  Chat                                                        │
+│    ai-chat               persistent chat, saves history      │
+│    ai-tool               chat with file-read bridge          │
+│    ava-quick "q"         shortest one-shot                   │
+│    ask "q"               one-shot with recent context        │
+│                                                              │
+│  Memory                                                      │
+│    ava-mem               pretty memory viewer                │
+│    ai-learn <path>       index a file/folder                 │
+│    ava-teach <path>      same, with completion               │
+│    ai-remember           she reflects on recent sessions     │
+│                                                              │
+│  Drop-Box (auto-read)                                        │
+│    ava-autoread <file>   add file she always sees            │
+│    ava-autoread --list   what's in the box                   │
+│    ava-autoread --show   print combined block                │
+│    ava-autoread --rm X   remove X                            │
+│    ava-autoread --clear  empty the box                       │
+│                                                              │
+│  Context                                                     │
+│    ava-ctx               show current context                │
+│                                                              │
+│  System                                                      │
+│    topgrade              update everything (no system)       │
+│    vv <target>           make target in cheatsheets          │
+│    repo                  cd to cheatsheets                   │
+│    board                 show the big board                  │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+AVAHELP
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  Optional: user-local overrides
+# ═══════════════════════════════════════════════════════════════
+[ -d ~/.config/zsh ] && for f in ~/.config/zsh/*.zsh; do [ -f "$f" ] && source "$f"; done
+
