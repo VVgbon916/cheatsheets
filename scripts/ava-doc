@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# ava-doc -- auto-generate a README for a script.
+# Usage: ava-doc scripts/foo.sh              (stdout)
+#        ava-doc scripts/foo.sh > foo.md    (write to file)
+#        ava-doc scripts/foo.sh -o foo.md   (explicit output)
+set -Eeuo pipefail
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVA_DOC_MODEL:-avalhla-review}"
+MAX_BYTES=15000
+
+FILE=""
+OUT=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o|--out) OUT="$2"; shift 2 ;;
+        -h|--help)
+            echo "usage: ava-doc <file> [-o <out.md>]"
+            exit 0 ;;
+        *) if [[ -z "$FILE" ]]; then FILE="$1"; else echo "extra arg: $1" >&2; exit 2; fi; shift ;;
+    esac
+done
+
+[[ -z "$FILE" ]] && { echo "usage: ava-doc <file> [-o out.md]" >&2; exit 2; }
+[[ -f "$FILE" ]] || { echo "X not a file: $FILE" >&2; exit 1; }
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable" >&2
+    exit 1
+fi
+
+BODY="$(head -c "$MAX_BYTES" "$FILE")"
+
+read -r -d '' PROMPT <<EOF || true
+[TASK]
+Avalhla DOC. Generate a concise README in markdown for the script below.
+Output ONLY markdown. No preamble. No closing prose. ASCII only.
+
+Required sections, in this order:
+# <script name>
+<one sentence purpose>
+
+## Usage
+\`\`\`sh
+<one or two invocations>
+\`\`\`
+
+## Arguments
+- <arg>: <meaning>       (or "None" if it takes no args)
+
+## Dependencies
+- <cmd or lib>: <why>    (or "None")
+
+## Examples
+\`\`\`sh
+<2 short examples>
+\`\`\`
+
+Rules:
+- Do not invent flags. Only document what the script actually does.
+- No sudo suggestions. Linux only.
+- Keep total under 40 lines.
+
+[CONTEXT]
+file: $FILE
+
+[USER]
+$BODY
+EOF
+
+RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
+    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+    '{model: $m, prompt: $p, stream: false}')" \
+    | jq -r '.response')"
+
+if [[ -n "$OUT" ]]; then
+    printf '%s\n' "$RESPONSE" > "$OUT"
+    echo "wrote: $OUT"
+else
+    printf '%s\n' "$RESPONSE"
+fi
