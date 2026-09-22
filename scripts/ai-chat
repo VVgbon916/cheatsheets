@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# ai-chat -- persistent chat with Avalhla.
+# Layers: [TASK] [CONTEXT] [USER]   (IDENTITY lives in Modelfile)
+# --read enables [READ:] handling with 3-per-turn cap + strict repeat block.
+set -Eeuo pipefail
+
+MEMORY_DIR="$HOME/.ai-memory"
+CONV_DIR="$MEMORY_DIR/conversations"
+PROFILE_DIR="$MEMORY_DIR/profiles"
+AUTO_READ_DIR="$MEMORY_DIR/auto-read"
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVALHLA_MODEL:-avalhla}"
+SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
+PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
+RANK_BIN="$HOME/projects/cheatsheets/scripts/ava-context"
+READ_BIN="$HOME/projects/cheatsheets/scripts/ai-read"
+
+MEM_TURNS="${AVALHLA_MEMORY_TURNS:-8}"
+ENABLE_READ=0
+MAX_READS_PER_TURN=3
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --read)  ENABLE_READ=1; shift ;;
+        --model) MODEL="$2"; shift 2 ;;
+        -h|--help)
+            echo "usage: ai-chat [--read] [--model M]"
+            exit 0 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+
+mkdir -p "$CONV_DIR" "$PROFILE_DIR"
+
+if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+    echo "X Ollama server not reachable" >&2
+    exit 1
+fi
+
+load_auto_read() {
+    [[ -d "$AUTO_READ_DIR" ]] || return 0
+    local out="" total=0
+    for f in "$AUTO_READ_DIR"/*; do
+        [[ -f "$f" ]] || continue
+        local size
+        size=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
+        (( total + size > 65536 )) && break
+        out+="
+--- $(basename "$f") ---
+$(cat "$f")
+"
+        total=$(( total + size ))
+    done
+    [[ -n "$out" ]] && printf '%s' "$out"
+    return 0
+}
+
+strip_read_tags() {
+    sed -E 's/\[READ: [^]]*\]//g; s/\[END READ\]//g' | sed -e 's/^[[:space:]]*$//' | awk 'NF' ORS='\n'
+}
+
+PROFILE=""
+[[ -f "$PROFILE_FILE" ]] && PROFILE="$(cat "$PROFILE_FILE")"
+
+echo ""
+echo "Avalhla :: chat   model=$MODEL   read=$ENABLE_READ"
+echo "  date   : $(date +%Y-%m-%d)"
+echo "  session: $SESSION_FILE"
+echo "  cmds   : /bye /clear /history /mem /model <name> /read on|off"
+echo ""
+
+HISTORY="[]"
+
+call_ollama() {
+    local p="$1"
+    curl -s "$OLLAMA_HOST/api/generate" \
+        -d "$(jq -n --arg m "$MODEL" --arg p "$p" \
+        '{model: $m, prompt: $p, stream: false}')" \
+        | jq -r '.response'
+}
+
+build_prompt() {
+    local user_line="$1" hist_txt="$2" read_ctx="$3" force="$4"
+    local p="[TASK]
+mode: chat
+read_enabled: $ENABLE_READ
+"
+    if [[ "$force" == "1" ]]; then
+        p+="goal: STOP requesting reads. Produce the final natural-language answer NOW.
+      Output plain text only. Do not emit [READ: ...] or [END READ].
+"
+    elif (( ENABLE_READ == 1 )); then
+        p+="goal: answer the user. If you need file content you do not have, output exactly ONE line: [READ: <arg>]
+      Allowed: [READ: path]  [READ: --ls dir]  [READ: --grep pattern]
+      If CONTEXT already has the content, answer in plain text. Never invent file contents.
+      Do not emit [END READ]. Emit at most one [READ: ...] per reply.
+"
+    else
+        p+="goal: answer the user. Use CONTEXT if present. Do NOT emit [READ: ...] tags.
+"
+    fi
+    p+="
+[CONTEXT]
+"
+    local auto_read; auto_read="$(load_auto_read)"
+    [[ -n "$auto_read" ]] && p+="--- auto-read ---
+$auto_read
+
+"
+    [[ -n "$PROFILE" ]]  && p+="--- user profile ---
+$PROFILE
+
+"
+    [[ -n "$hist_txt" ]] && p+="--- ranked recent turns ---
+$hist_txt
+
+"
+    [[ -n "$read_ctx" ]] && p+="--- last read result ---
+$read_ctx
+
+"
+    p+="[USER]
+$user_line"
+    printf '%s' "$p"
+}
+
+while true; do
+    printf "\n\033[1;36myou >\033[0m "
+    IFS= read -r line || break
+
+    case "$line" in
+        /bye|/exit) echo ""; echo "  session saved: $SESSION_FILE"; break ;;
+        /clear)   HISTORY="[]"; echo "  context cleared"; continue ;;
+        /history) echo "$HISTORY" | jq -r '.[] | "\(.role): \(.content)"' | tail -n 20; continue ;;
+        /mem)     if [[ -n "$PROFILE" ]]; then echo "$PROFILE" | head -n 15; else echo "  (no profile)"; fi; continue ;;
+        /model\ *) MODEL="${line#/model }"; echo "  model = $MODEL"; continue ;;
+        /read\ *) case "${line#/read }" in on) ENABLE_READ=1; echo "  read = on";; off) ENABLE_READ=0; echo "  read = off";; *) echo "  usage: /read on|off";; esac; continue ;;
+        "") continue ;;
+    esac
+
+    HIST_TXT=""
+    if [[ "$HISTORY" != "[]" ]]; then
+        HIST_TXT=$(echo "$HISTORY" | jq -c '.[]' | "$RANK_BIN" "$line" "$MEM_TURNS" 2>/dev/null || true)
+    fi
+
+    READ_CTX=""
+    SEEN=""
+    READS=0
+    FINAL=""
+
+    while :; do
+        FORCE=0
+        if (( READS >= MAX_READS_PER_TURN )); then FORCE=1; fi
+
+        PROMPT="$(build_prompt "$line" "$HIST_TXT" "$READ_CTX" "$FORCE")"
+        RESPONSE="$(call_ollama "$PROMPT")"
+
+        if (( ENABLE_READ == 0 )); then
+            FINAL="$RESPONSE"
+            break
+        fi
+
+        if ! echo "$RESPONSE" | grep -q '\[READ: '; then
+            FINAL="$RESPONSE"
+            break
+        fi
+
+        if (( READS >= MAX_READS_PER_TURN )); then
+            FINAL="$RESPONSE"
+            break
+        fi
+
+        READ_ARG="$(echo "$RESPONSE" | grep -oE '\[READ: [^]]+\]' | head -1 | sed 's/\[READ: //; s/\]//')"
+
+        # strict repeat block for ALL args this turn
+        if echo "$SEEN" | grep -qF "|${READ_ARG}|"; then
+            echo "  [blocked repeat: $READ_ARG]"
+            READ_CTX="(already read: $READ_ARG -- do NOT request again. Answer now in plain text, no tags.)"
+            continue
+        fi
+
+        SEEN="${SEEN}|${READ_ARG}|"
+        READS=$(( READS + 1 ))
+        echo "  [read $READS/$MAX_READS_PER_TURN: $READ_ARG]"
+
+        RESULT="$("$READ_BIN" "$READ_ARG" 2>&1 || echo "X read failed: $READ_ARG")"
+        RESULT="$(echo "$RESULT" | head -c 4000)"
+        READ_CTX="$RESULT"
+    done
+
+    # final pass: strip any tags the model still emitted
+    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags)"
+
+    # if final is empty after stripping (model only wanted to read), force one last call
+    if [[ -z "$FINAL_CLEAN" ]]; then
+        FINAL_CLEAN="$(call_ollama "$(build_prompt "$line" "$HIST_TXT" "$READ_CTX" 1)" | strip_read_tags)"
+    fi
+
+    echo ""
+    echo "$FINAL_CLEAN"
+    echo ""
+
+    jq -cn --arg r "user" --arg c "$line"      '{role:$r, content:$c, ts:now}' >> "$SESSION_FILE"
+    jq -cn --arg r "assistant" --arg c "$FINAL_CLEAN" '{role:$r, content:$c, ts:now}' >> "$SESSION_FILE"
+
+    HISTORY=$(echo "$HISTORY" | jq -c --arg u "$line" --arg a "$FINAL_CLEAN" \
+        '. + [{role:"user", content:$u}, {role:"assistant", content:$a}]')
+done
