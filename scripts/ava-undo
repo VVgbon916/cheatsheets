@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# ava-undo -- revert the last AI-authored commit.
+# Modes:
+#   ava-undo              show what WOULD be reverted (dry-run preview)
+#   ava-undo --go         actually revert
+#   ava-undo --list       show last 5 AI commits
+# Author is matched by env AVA_AI_AUTHOR (default: Avalhla).
+set -Eeuo pipefail
+
+AUTHOR="${AVA_AI_AUTHOR:-Avalhla}"
+MODE="preview"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --go)    MODE="go"; shift ;;
+        --list)  MODE="list"; shift ;;
+        -h|--help)
+            echo "usage: ava-undo [--go|--list]"
+            echo "  no flag   show last AI commit that would be reverted"
+            echo "  --go      actually git revert it"
+            echo "  --list    last 5 commits by AI author"
+            echo ""
+            echo "author matched: $AUTHOR"
+            echo "override with: AVA_AI_AUTHOR='Name <email>' ava-undo"
+            exit 0 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+
+REPO="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$REPO" ]]; then
+    echo "X not inside a git repo" >&2
+    exit 1
+fi
+
+cd "$REPO"
+
+if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+    echo "X repo has no commits" >&2
+    exit 1
+fi
+
+LAST_AI="$(git log -n 1 --format='%H' --author="$AUTHOR" 2>/dev/null || true)"
+
+if [[ -z "$LAST_AI" ]]; then
+    echo ""
+    echo "ava-undo :: $REPO"
+    echo "  no commits found by author: $AUTHOR"
+    echo "  hint: set AVA_AI_AUTHOR to your commit author name"
+    exit 0
+fi
+
+show_one() {
+    local sha="$1"
+    echo "  sha     : $(git rev-parse --short "$sha")"
+    echo "  subject : $(git log -n 1 --format='%s' "$sha")"
+    echo "  author  : $(git log -n 1 --format='%an <%ae>' "$sha")"
+    echo "  date    : $(git log -n 1 --format='%ad' --date=iso "$sha")"
+}
+
+case "$MODE" in
+    list)
+        echo ""
+        echo "ava-undo --list :: last 5 by '$AUTHOR' in $REPO"
+        echo ""
+        git log -n 5 --author="$AUTHOR" --format='  %h  %ad  %s' --date=short || true
+        echo ""
+        ;;
+    preview)
+        echo ""
+        echo "ava-undo :: $REPO"
+        echo "  would revert:"
+        show_one "$LAST_AI"
+        echo ""
+        echo "  files it touched:"
+        git show --stat --format='' "$LAST_AI" | sed 's/^/    /'
+        echo ""
+        echo "  run 'ava-undo --go' to revert"
+        echo ""
+        ;;
+    go)
+        echo ""
+        echo "ava-undo --go :: $REPO"
+        echo "  reverting:"
+        show_one "$LAST_AI"
+        echo ""
+        if git revert --no-edit "$LAST_AI"; then
+            echo ""
+            echo "  revert committed: $(git rev-parse --short HEAD)"
+            echo ""
+        else
+            echo ""
+            echo "  X revert failed -- likely conflict."
+            echo "    resolve, then: git revert --continue"
+            echo "    or abort:      git revert --abort"
+            exit 1
+        fi
+        ;;
+esac
