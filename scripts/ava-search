@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# ava-search -- fuzzy-find past turns across all conversation logs.
+# Enter copies the line (role + content) to stdout.
+set -Eeuo pipefail
+
+CONV_DIR="$HOME/.ai-memory/conversations"
+
+if ! command -v fzf >/dev/null 2>&1; then
+    echo "X fzf not installed" >&2
+    exit 1
+fi
+
+if [[ ! -d "$CONV_DIR" ]]; then
+    echo "X no conversation dir at $CONV_DIR" >&2
+    exit 1
+fi
+
+FILES=("$CONV_DIR"/*.jsonl)
+if [[ ! -e "${FILES[0]}" ]]; then
+    echo "X no .jsonl files in $CONV_DIR" >&2
+    exit 1
+fi
+
+# Build one line per turn: <date> <role> <content>
+# Using jq per file to keep date context.
+build_lines() {
+    for f in "${FILES[@]}"; do
+        [[ -f "$f" ]] || continue
+        local day
+        day="$(basename "$f" .jsonl)"
+        jq -r --arg d "$day" '
+            select(.content | length > 0)
+            | "\($d)\t\(.role)\t\(.content | gsub("\n"; " "))"
+        ' "$f" 2>/dev/null
+    done
+}
+
+export -f build_lines 2>/dev/null || true
+
+SELECTED=$(build_lines | fzf \
+    --delimiter='\t' \
+    --with-nth='1,2,3' \
+    --nth='3' \
+    --height=90% \
+    --reverse \
+    --prompt='ava-search > ' \
+    --preview='echo {} | awk -F"\t" "{print \"date: \" \$1 \"\nrole: \" \$2 \"\n\n\" \$3}" | fold -s -w 90' \
+    --preview-window='right:60%:wrap' \
+) || true
+
+[[ -z "$SELECTED" ]] && exit 0
+
+echo ""
+echo "$SELECTED" | awk -F'\t' '{print "date: " $1 "\nrole: " $2 "\n\n" $3}'
