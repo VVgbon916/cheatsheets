@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# ava-imagine -- generate + manage imagination/ entries.
+set -Eeuo pipefail
+
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVA_IMAGINE_MODEL:-avalhla-chat}"
+ROOT="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/repo/imagination}"
+H="$ROOT/HUMAN"
+A="$ROOT/AI"
+
+mkdir -p "$H" "$A"
+
+slugify() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//; s/-$//'; }
+
+sanitize() {
+    sed -e 's/—/--/g; s/–/-/g' \
+        -e "s/’/'/g; s/‘/'/g" \
+        -e 's/“/"/g; s/”/"/g' \
+        -e 's/…/.../g' \
+        -e 's/[^[:print:][\t]]//g'
+}
+
+palette=("red -- alert and vivid" "orange -- warm and inviting" \
+         "yellow -- curious and bright" "green -- calm and growing" \
+         "blue -- quiet and deep" "purple -- dreaming and strange")
+pick_color() {
+    local seed="$1"
+    local low
+    low="$(printf '%s' "$seed" | tr '[:upper:]' '[:lower:]')"
+    case "$low" in
+        *red*)    printf '%s' "${palette[0]}"; return ;;
+        *orange*) printf '%s' "${palette[1]}"; return ;;
+        *yellow*) printf '%s' "${palette[2]}"; return ;;
+        *green*)  printf '%s' "${palette[3]}"; return ;;
+        *blue*)   printf '%s' "${palette[4]}"; return ;;
+        *purple*) printf '%s' "${palette[5]}"; return ;;
+    esac
+    local idx=$(( $(printf '%s' "$seed" | cksum | awk '{print $1}') % 6 ))
+    printf '%s' "${palette[$idx]}"
+}
+
+rebuild_human_index() {
+    {
+        echo "# imagination -- HUMAN index"
+        echo ""
+        echo "framed entries. open any .md to read."
+        echo ""
+        for f in "$H"/*.md; do
+            [[ -f "$f" ]] || continue
+            [[ "$(basename "$f")" == "index.md" ]] && continue
+            title="$(grep -m1 '^# ' "$f" | sed 's/^# //')"
+            ref="$(grep -m1 '^> ref:' "$f" | sed 's/^> ref: *//' | awk '{print $1" "$2}')"
+            printf -- '- [%s](%s.md)  -- %s\n' "$title" "$(basename "$f" .md)" "$ref"
+        done
+    } > "$H/index.md"
+}
+
+rebuild_ai_index() {
+    {
+        echo "# imagination -- AI index"
+        echo ""
+        echo "one line per entry. regenerate: ava-imagine build"
+        echo ""
+        for f in "$A"/*.md; do
+            [[ -f "$f" ]] || continue
+            [[ "$(basename "$f")" == "index.md" ]] && continue
+            ref="$(grep -m1 '^ref:' "$f" | sed 's/^ref: *//')"
+            printf -- '- %s  -- ref %s\n' "$(basename "$f" .md)" "$ref"
+        done
+    } > "$A/index.md"
+}
+
+# extract body prose from a HUMAN file (between first and second ``` fence, drop frame lines)
+extract_body() {
+    local f="$1"
+    awk '
+        /^```$/ { c++; next }
+        c == 1 {
+            # inside first fence -> keep content, drop frame lines
+            if ($0 ~ /^\+[-=]+\+$/) next
+            if ($0 ~ /^\|.*\|$/) next
+            print
+        }
+    ' "$f"
+}
+
+write_ai_from_body() {
+    local slug="$1" ref="$2" color="$3" body="$4"
+    {
+        echo "# $slug"
+        echo ""
+        echo "ref: $ref"
+        echo "color: $color"
+        echo ""
+        printf '%s\n' "$body" | awk 'BEGIN{RS=""; ORS="\n\n"} NR<=2' | head -c 700
+        echo ""
+    } > "$A/${slug}.md"
+}
+
+cmd="${1:-help}"
+case "$cmd" in
+    help|-h|--help)
+        cat <<'EOT'
+ava-imagine new "topic"     generate HUMAN + AI
+ava-imagine build           regenerate AI/ + indexes (no LLM)
+ava-imagine list            list entries
+ava-imagine show <slug>     cat HUMAN/<slug>.md
+EOT
+        exit 0
+        ;;
+    list)
+        echo ""
+        echo "== imagination/ =="
+        echo ""
+        echo "HUMAN:"
+        ls -1t "$H"/*.md 2>/dev/null | grep -v index.md | sed 's|.*/|  |' || echo "  (none)"
+        echo ""
+        echo "AI:"
+        ls -1t "$A"/*.md 2>/dev/null | grep -v index.md | sed 's|.*/|  |' || echo "  (none)"
+        echo ""
+        exit 0
+        ;;
+    show)
+        slug="${2:-}"
+        [[ -z "$slug" ]] && { echo "usage: ava-imagine show <slug>" >&2; exit 2; }
+        f="$H/${slug}.md"
+        [[ -f "$f" ]] || { echo "X no entry: $slug" >&2; exit 1; }
+        cat "$f"
+        exit 0
+        ;;
+    build)
+        for f in "$H"/*.md; do
+            [[ -f "$f" ]] || continue
+            [[ "$(basename "$f")" == "index.md" ]] && continue
+            slug="$(basename "$f" .md)"
+            ref="$(grep -m1 '^> ref:'   "$f" | sed 's/^> ref: *//')"
+            color="$(grep -m1 '^> color:' "$f" | sed 's/^> color: *//')"
+            body="$(extract_body "$f")"
+            write_ai_from_body "$slug" "$ref" "$color" "$body"
+        done
+        rebuild_human_index
+        rebuild_ai_index
+        echo "build: AI/ regenerated from HUMAN/"
+        exit 0
+        ;;
+    new)
+        shift
+        TOPIC="$*"
+        [[ -z "$TOPIC" ]] && { echo "usage: ava-imagine new \"topic\"" >&2; exit 2; }
+        if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+            echo "X Ollama server not reachable" >&2; exit 1
+        fi
+
+        SLUG="$(slugify "$TOPIC")-$(date +%H%M%S)"
+        STAMP="$(date '+%Y-%m-%d %H:%M %Z')"
+        COLOR="$(pick_color "$TOPIC")"
+        TITLE="$(printf '%s' "$TOPIC" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2); print}')"
+
+        echo ""
+        echo "ava-imagine :: $SLUG"
+        echo ""
+
+        read -r -d '' PROMPT <<EOF || true
+[TASK]
+Write ONLY 200-280 words of prose about this topic: $TOPIC
+
+STRICT OUTPUT RULES:
+- Output ONLY prose. No title. No headers. No code fences. No lists.
+- Do NOT write TITLE:, COLOR:, ART: or any label.
+- ASCII only. No em-dash. No curly quotes. No ellipsis glyph. No emoji.
+- Use "--" for a dash and "..." for a pause.
+- Present tense, warm, tactile, first or close-third person.
+- 3 or 4 short paragraphs, blank line between them.
+- Do not ask the user anything. Do not sign.
+
+[USER]
+write the prose.
+EOF
+
+        BODY="$(curl -s "$OLLAMA_HOST/api/generate" \
+            -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
+            '{model: $m, prompt: $p, stream: false}')" \
+            | jq -r '.response' \
+            | sanitize \
+            | grep -vE '^(TITLE|COLOR|ART):' \
+            | grep -vE '^```' \
+            | awk 'NF')"
+
+        HF="$H/${SLUG}.md"
+
+        # HUMAN: frame + wrapped prose
+        {
+            echo "# $TITLE"
+            echo ""
+            echo "> ref:   $STAMP  (real anchor)"
+            echo "> color: $COLOR"
+            echo "> topic: $TOPIC"
+            echo ""
+            echo '```'
+            echo "+------------------------------------------------------------------------+"
+            printf '| %-70s |\n' "$TITLE"
+            printf '| %-70s |\n' "color: $COLOR"
+            printf '| %-70s |\n' "ref:   $STAMP"
+            echo "+------------------------------------------------------------------------+"
+            echo ""
+            printf '%s\n' "$BODY" | fold -s -w 72 | sed 's/[[:space:]]*$//'
+            echo ""
+            echo "+------------------------------------------------------------------------+"
+            echo '```'
+            echo ""
+            echo "_imagination -- not fact._"
+        } > "$HF"
+
+        write_ai_from_body "$SLUG" "$STAMP" "$COLOR" "$BODY"
+        rebuild_human_index
+        rebuild_ai_index
+
+        echo ""
+        cat "$HF"
+        echo ""
+        echo "  human: $HF"
+        echo "  ai:    $A/${SLUG}.md"
+        echo ""
+        exit 0
+        ;;
+    *)
+        echo "unknown: $cmd" >&2
+        exit 2
+        ;;
+esac
