@@ -15,21 +15,21 @@ Host:      VVgBazz
 |  SECTION 01  //  ALIASES                                                                         |
 +==================================================================================================+
 
-alias ai-chat='~/Avalhla/repo/scripts/ai-with-memory'
-alias ai-learn='~/Avalhla/repo/scripts/ai-learn'
-alias ai-remember='~/Avalhla/repo/scripts/ai-remember'
-alias ai-tool='~/Avalhla/repo/scripts/ai-chat-tool'
-alias ask='~/Avalhla/repo/scripts/ai-ask'
-alias avacheat='cat ~/Avalhla/repo/AVALHLA_CHEATSHEET.txt'
-alias avacommands='cat ~/Avalhla/repo/AVALHLA_COMMANDS.txt'
-alias avastart='~/Avalhla/repo/scripts/start-avalhla.sh'
+alias ai-chat='~/Avalhla/scripts/ai-with-memory'
+alias ai-learn='~/Avalhla/scripts/ai-learn'
+alias ai-remember='~/Avalhla/scripts/ai-remember'
+alias ai-tool='~/Avalhla/scripts/ai-chat-tool'
+alias ask='~/Avalhla/scripts/ai-ask'
+alias avacheat='cat ~/Avalhla/AVALHLA_CHEATSHEET.txt'
+alias avacommands='cat ~/Avalhla/AVALHLA_COMMANDS.txt'
+alias avastart='~/Avalhla/scripts/start-avalhla.sh'
 alias avastop='systemctl --user stop ollama.service'
-alias board='cat ~/Avalhla/repo/BOARD.txt'
-alias cheatsheet-prompt='cat ~/Avalhla/repo/PROMPT_framed_cheatsheet.txt'
+alias board='cat ~/Avalhla/BOARD.txt'
+alias cheatsheet-prompt='cat ~/Avalhla/PROMPT_framed_cheatsheet.txt'
 alias java21='export JAVA_HOME=/opt/java-21 && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
 alias java25='export JAVA_HOME=/usr/lib/jvm/java-25-openjdk && export PATH=$JAVA_HOME/bin:$(echo $PATH | sed "s|/opt/java-21/bin:||g; s|/usr/lib/jvm/java-25-openjdk/bin:||g")'
-alias order='cat ~/Avalhla/repo/Dawa_CheatAvalhlaOrder.md'
-alias repo='cd ~/Avalhla/repo'
+alias order='cat ~/Avalhla/Dawa_CheatAvalhlaOrder.md'
+alias repo='cd ~/Avalhla'
 alias topgrade='topgrade --disable system'
 
 +==================================================================================================+
@@ -72,7 +72,7 @@ $ZSH/oh-my-zsh.sh
 |  SECTION 05  //  MAKE TARGETS  (all Makefiles in ~/Avalhla)                                     |
 +==================================================================================================+
 
--- /home/VVgbon/Avalhla/repo --
+-- /home/VVgbon/Avalhla --
     make ritual
     make board
 

@@ -19,3 +19,12 @@ private/
 # Secrets and personal data
 *.swp
 Thumbs.db
+
+# Private memory/state — never commit
+memory/
+
+# Local CLI symlink layer
+bin/
+
+# Independent Git worktree/repo
+lore/

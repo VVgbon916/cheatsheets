@@ -6,7 +6,7 @@
 #   ava-pick --done       mark top pick done
 set -Eeuo pipefail
 
-REPO="${AVA_TASKS_REPO:-$HOME/Avalhla/repo}"
+REPO="${AVA_TASKS_REPO:-$HOME/Avalhla}"
 TASKS="${AVA_TASKS_FILE:-$REPO/TASKS.txt}"
 
 N=1

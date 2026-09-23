@@ -17,14 +17,14 @@
     flatpak uninstall --unused -y
     podman system prune -f
     ollama rm avalhla:rebuild-test 2>/dev/null || true
-    git -C ~/Avalhla/repo gc --auto --prune=now
+    git -C ~/Avalhla gc --auto --prune=now
 
     # ── STAGE 2 :: UPDATE ────────────────────────────────────────────────────────────────
     ujust update
     topgrade
 
     # ── STAGE 3 :: VERIFY AVA (fresh clone from remote) ──────────────────────────────────
-    cd ~/Avalhla/repo
+    cd ~/Avalhla
     REPO=$(git remote get-url origin)
     rm -rf /tmp/verify-ava
     git clone "$REPO" /tmp/verify-ava
@@ -49,7 +49,7 @@
     flatpak uninstall --unused -y                      orphaned runtimes
     podman system prune -f                             dangling images, stopped containers
     ollama rm avalhla:rebuild-test 2>/dev/null         kill test tags from verify runs
-    git -C ~/Avalhla/repo gc --auto --prune=now
+    git -C ~/Avalhla gc --auto --prune=now
                                                        compress loose git objects
 
     SAFE:    podman prune -f only touches USER pods, never system ones.
@@ -80,7 +80,7 @@
 |  SECTION 04  //  VERIFY AVA  --  fresh clone, byte-for-byte, then rebuild test                   |
 +==================================================================================================+
 
-    cd ~/Avalhla/repo
+    cd ~/Avalhla
     REPO=$(git remote get-url origin)                  auto-detect the remote URL
     rm -rf /tmp/verify-ava
     git clone "$REPO" /tmp/verify-ava                  pull a FRESH copy from remote
@@ -104,7 +104,7 @@
 |  SECTION 05  //  PUSH  --  the single command at the end                                         |
 +==================================================================================================+
 
-    cd ~/Avalhla/repo && \
+    cd ~/Avalhla && \
     git add -A && \
     git commit -m "chore: daily ritual $(date +%Y-%m-%d)" && \
     git push

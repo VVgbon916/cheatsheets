@@ -4,6 +4,13 @@
 # Score = keyword_match*3 + recency + length_bonus
 set -Eeuo pipefail
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-context \"<query>\" [N] < turns.jsonl"
+        exit 0
+        ;;
+esac
+
 QUERY="${1:-}"
 N="${2:-${AVALHLA_MEMORY_TURNS:-8}}"
 

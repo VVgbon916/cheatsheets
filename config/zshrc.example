@@ -96,23 +96,23 @@ java25() {
 # ═══════════════════════════════════════════════════════════════
 
 # Repo + boards
-alias repo='cd ~/Avalhla/repo'
-alias board='cat ~/Avalhla/repo/BOARD.txt'
-alias avacheat='cat ~/Avalhla/repo/AVALHLA_CHEATSHEET.txt'
-alias avacommands='cat ~/Avalhla/repo/AVALHLA_COMMANDS.txt'
-alias order='cat ~/Avalhla/repo/Dawa_CheatAvalhlaOrder.md'
-alias cheatsheet-prompt='cat ~/Avalhla/repo/PROMPT_framed_cheatsheet.txt'
+alias repo='cd ~/Avalhla'
+alias board='cat ~/Avalhla/BOARD.txt'
+alias avacheat='cat ~/Avalhla/AVALHLA_CHEATSHEET.txt'
+alias avacommands='cat ~/Avalhla/AVALHLA_COMMANDS.txt'
+alias order='cat ~/Avalhla/Dawa_CheatAvalhlaOrder.md'
+alias cheatsheet-prompt='cat ~/Avalhla/PROMPT_framed_cheatsheet.txt'
 
 # Ava server control
-alias avastart='~/Avalhla/repo/scripts/start-avalhla.sh'
+alias avastart='~/Avalhla/scripts/start-avalhla.sh'
 alias avastop='systemctl --user stop ollama.service'
 
 # Ava chat + tools
-alias ai-chat='~/Avalhla/repo/scripts/ai-with-memory'
-alias ai-learn='~/Avalhla/repo/scripts/ai-learn'
-alias ai-remember='~/Avalhla/repo/scripts/ai-remember'
-alias ai-tool='~/Avalhla/repo/scripts/ai-chat-tool'
-alias ask='~/Avalhla/repo/scripts/ai-ask'
+alias ai-chat='~/Avalhla/scripts/ai-with-memory'
+alias ai-learn='~/Avalhla/scripts/ai-learn'
+alias ai-remember='~/Avalhla/scripts/ai-remember'
+alias ai-tool='~/Avalhla/scripts/ai-chat-tool'
+alias ask='~/Avalhla/scripts/ai-ask'
 
 # System
 alias topgrade='topgrade --disable system'
@@ -169,7 +169,7 @@ research() {
 }
 
 vv() {
-    local repo="$HOME/Avalhla/repo"
+    local repo="$HOME/Avalhla"
     [[ -d "$repo" ]] || { echo "✗ repo not found at $repo"; return 1; }
     ( cd "$repo" && make "$@" )
 }
@@ -212,7 +212,7 @@ ava-teach() {
         echo 'Usage: ava-teach <file|dir>'
         return 1
     fi
-    ~/Avalhla/repo/scripts/ai-learn "$@"
+    ~/Avalhla/scripts/ai-learn "$@"
 }
 
 # Pretty memory viewer
@@ -269,8 +269,8 @@ ava-ctx() {
         return 0
     fi
     echo "To change context, edit persona/avalhla.Modelfile and rebuild:"
-    echo "  sed -i 's/^PARAMETER num_ctx .*/PARAMETER num_ctx $ctx/' ~/Avalhla/repo/persona/avalhla.Modelfile"
-    echo "  ollama create $AVALHLA_MODEL -f ~/Avalhla/repo/persona/avalhla.Modelfile"
+    echo "  sed -i 's/^PARAMETER num_ctx .*/PARAMETER num_ctx $ctx/' ~/Avalhla/persona/avalhla.Modelfile"
+    echo "  ollama create $AVALHLA_MODEL -f ~/Avalhla/persona/avalhla.Modelfile"
 }
 
 # ═══════════════════════════════════════════════════════════════

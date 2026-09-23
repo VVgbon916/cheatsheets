@@ -12,7 +12,7 @@ set -Eeuo pipefail
 
 STATE_DIR="${AVA_MOOD_DIR:-$HOME/Avalhla/memory/state}"
 STATE="$STATE_DIR/mood.json"
-IMAGINE_HUMAN="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/repo/imagination}/HUMAN"
+IMAGINE_HUMAN="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/imagination}/HUMAN"
 
 mkdir -p "$STATE_DIR"
 

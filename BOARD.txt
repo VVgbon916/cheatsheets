@@ -74,7 +74,7 @@
 |  SECTION 05  //  EDIT + REBUILD  --  only after touching persona/avalhla.Modelfile              |
 +==================================================================================================+
 
-    nano ~/Avalhla/repo/persona/avalhla.Modelfile
+    nano ~/Avalhla/persona/avalhla.Modelfile
 
     # Then rebuild:
     make ava-rebuild
@@ -149,12 +149,12 @@
 |  SECTION 09  //  FILE LOCATIONS  --  where everything lives                                       |
 +==================================================================================================+
 
-    ~/Avalhla/repo/persona/avalhla.Modelfile     her source of truth
-    ~/Avalhla/repo/persona/system-prompt.txt     plain version
-    ~/Avalhla/repo/scripts/start-avalhla.sh      launcher
-    ~/Avalhla/repo/scripts/ai-with-memory        memory chat
-    ~/Avalhla/repo/scripts/ai-learn              indexer
-    ~/Avalhla/repo/scripts/ai-remember           reflection
+    ~/Avalhla/persona/avalhla.Modelfile     her source of truth
+    ~/Avalhla/persona/system-prompt.txt     plain version
+    ~/Avalhla/scripts/start-avalhla.sh      launcher
+    ~/Avalhla/scripts/ai-with-memory        memory chat
+    ~/Avalhla/scripts/ai-learn              indexer
+    ~/Avalhla/scripts/ai-remember           reflection
     ~/.config/containers/systemd/ollama.container        container def
     ~/.ollama/                                            models + logs
     ~/.ai-memory/                                         chat history
@@ -183,7 +183,7 @@
 |  SECTION 11  //  THE REUSABLE PROMPT  --  for future cheat sheets                                |
 +==================================================================================================+
 
-    Save to: ~/Avalhla/repo/PROMPT_framed_cheatsheet.txt
+    Save to: ~/Avalhla/PROMPT_framed_cheatsheet.txt
 
     ROLE: Generate a terminal cheat sheet.
 

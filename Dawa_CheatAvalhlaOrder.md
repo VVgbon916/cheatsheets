@@ -115,7 +115,7 @@ Everything else is expansion.
 
   make tools              # verify all tool dependencies
   cat ~/.ai-memory/reflections/$(date +%Y-%m-%d).md  # her reflection
-  cd ~/Avalhla/repo && git pull     # keep repo fresh
+  cd ~/Avalhla && git pull     # keep repo fresh
 
 ---
 

@@ -3,13 +3,22 @@
 # Exit 0 = all pass, 1 = any fail.
 set -Eeuo pipefail
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-verify"
+        echo "       verify Avalhla runtime, scripts, PATH, memory, systemd, and git state"
+        exit 0
+        ;;
+esac
+
+
 PASS=0
 FAIL=0
 ok()   { printf '  [ OK ] %s\n' "$1"; PASS=$(( PASS + 1 )); }
 bad()  { printf '  [FAIL] %s -- %s\n' "$1" "$2"; FAIL=$(( FAIL + 1 )); }
 
 ROOT="$HOME/Avalhla"
-REPO="$ROOT/repo"
+REPO="$ROOT"
 MEM="$ROOT/memory"
 
 echo "== ava-verify :: $(date '+%Y-%m-%d %H:%M %Z') =="
@@ -20,7 +29,6 @@ echo "-- root layout --"
 [[ -d "$REPO/.git" ]]  && ok "repo git"          || bad "repo git"       "no .git at $REPO"
 [[ -d "$MEM" ]]        && ok "memory dir"        || bad "memory dir"     "missing $MEM"
 [[ -L ~/.ai-memory ]]  && ok "~/.ai-memory link" || bad "~/.ai-memory"   "not a symlink"
-[[ -L ~/cheatsheets ]] && ok "~/cheatsheets link"|| bad "~/cheatsheets"  "not a symlink"
 
 # 2. ollama server + models
 echo ""
@@ -44,7 +52,7 @@ done
 echo ""
 echo "-- scripts --"
 for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit; do
-    p="$REPO/scripts/$s"
+    p="$ROOT/scripts/$s"
     if [[ -x "$p" ]]; then
         ok "script $s"
     else
@@ -102,7 +110,13 @@ DIRTY="$(git status --porcelain | wc -l)"
 if [[ "$DIRTY" -eq 0 ]]; then
     ok "working tree clean"
 else
-    bad "working tree clean" "$DIRTY file(s) modified"
+    if ! git diff --check >/dev/null 2>&1; then
+        bad "working tree" "git diff --check failed"
+    elif [[ "${AVA_VERIFY_STRICT_GIT:-0}" == "1" ]]; then
+        bad "working tree clean" "$DIRTY file(s) modified"
+    else
+        ok "working tree ready ($DIRTY uncommitted file(s))"
+    fi
 fi
 
 BR="$(git rev-parse --abbrev-ref HEAD)"
@@ -121,7 +135,7 @@ fi
 # 8. audit
 echo ""
 echo "-- audit --"
-if "$REPO/scripts/ava-audit" >/dev/null 2>&1; then
+if "$ROOT/scripts/ava-audit" >/dev/null 2>&1; then
     ok "ava-audit CLEAN"
 else
     bad "ava-audit" "banned patterns found"

@@ -3,9 +3,18 @@
 # Respects .gitignore, skips binaries, caps total bytes, writes manifest.
 set -Eeuo pipefail
 
-REPO="${1:-$HOME/Avalhla/repo}"
+REPO="${1:-$HOME/Avalhla}"
 KB_DIR="$HOME/.ai-memory/knowledge-base"
 MAX_BYTES=$((500 * 1024))
+
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-learn-repo [repo]"
+        echo "       index a repository into the Avalhla knowledge base"
+        exit 0
+        ;;
+esac
+
 NAME="$(basename "$REPO")"
 
 MANIFEST="$KB_DIR/${NAME}.manifest.json"

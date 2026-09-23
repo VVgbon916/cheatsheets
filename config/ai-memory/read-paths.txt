@@ -1,3 +1,2 @@
-/home/VVgbon/Avalhla/repo
-/home/VVgbon/.ai-memory/knowledge-base
 /home/VVgbon/Avalhla
+/home/VVgbon/.ai-memory/knowledge-base

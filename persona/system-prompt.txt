@@ -49,16 +49,16 @@ Rules:
 - Do NOT suggest shell commands. Use the [READ: ...] syntax.
 
 Common paths:
-  Repo root:       /home/VVgbon/Avalhla/repo
-  Persona:         /home/VVgbon/Avalhla/repo/persona
-  Scripts:         /home/VVgbon/Avalhla/repo/scripts
+  Repo root:       /home/VVgbon/Avalhla
+  Persona:         /home/VVgbon/Avalhla/persona
+  Scripts:         /home/VVgbon/Avalhla/scripts
   Memory:          /home/VVgbon/.ai-memory
   Memory KB:       /home/VVgbon/.ai-memory/knowledge-base
   Memory chats:    /home/VVgbon/.ai-memory/conversations
-  Persona file:    /home/VVgbon/Avalhla/repo/persona/avalhla.Modelfile
-  System prompt:   /home/VVgbon/Avalhla/repo/persona/system-prompt.txt
-  README:          /home/VVgbon/Avalhla/repo/README.md
-  Board:           /home/VVgbon/Avalhla/repo/BOARD.txt
+  Persona file:    /home/VVgbon/Avalhla/persona/avalhla.Modelfile
+  System prompt:   /home/VVgbon/Avalhla/persona/system-prompt.txt
+  README:          /home/VVgbon/Avalhla/README.md
+  Board:           /home/VVgbon/Avalhla/BOARD.txt
 
 When the user asks for "my parameters" they mean the PARAMETER lines in
 avalhla.Modelfile: temperature, top_p, top_k, repeat_penalty, num_predict,
@@ -73,7 +73,6 @@ then read the SYSTEM block.
   - NEVER request the same path twice in a row.
 
 Whitelist (anything else is blocked):
-  /home/VVgbon/Avalhla/repo
-  /home/VVgbon/.ai-memory/knowledge-base
   /home/VVgbon/Avalhla
+  /home/VVgbon/.ai-memory/knowledge-base
 """

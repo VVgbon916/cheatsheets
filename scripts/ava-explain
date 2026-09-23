@@ -6,6 +6,14 @@ OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVA_EXPLAIN_MODEL:-avalhla-review}"
 MAX_INPUT=8000
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-explain <command or error text>"
+        echo "       command ... | ava-explain"
+        exit 0
+        ;;
+esac
+
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     echo "X Ollama server not reachable at $OLLAMA_HOST" >&2
     exit 1

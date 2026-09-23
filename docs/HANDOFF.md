@@ -17,14 +17,13 @@
 |  SECTION 01  //  LAYOUT  (single root)                                                           |
 +==================================================================================================+
 
-    ~/Avalhla/repo             git repo, source of truth
+    ~/Avalhla             git repo, source of truth
     ~/Avalhla/memory           persistent memory (symlinked as ~/.ai-memory)
     ~/Avalhla/bin              symlinks to every ava-* entry point
     ~/.local/bin               mirrors ava-* / ai-chat for PATH
 
     Compat symlinks:
       ~/.ai-memory  ->  ~/Avalhla/memory
-      ~/cheatsheets ->  ~/Avalhla/repo
 
 
 +==================================================================================================+

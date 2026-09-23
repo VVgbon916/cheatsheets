@@ -3,6 +3,14 @@
 # Enter copies the line (role + content) to stdout.
 set -Eeuo pipefail
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-search"
+        echo "       interactive fuzzy search across conversation logs"
+        exit 0
+        ;;
+esac
+
 CONV_DIR="$HOME/.ai-memory/conversations"
 
 if ! command -v fzf >/dev/null 2>&1; then

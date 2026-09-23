@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVA_IMAGINE_MODEL:-avalhla-chat}"
-ROOT="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/repo/imagination}"
+ROOT="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/imagination}"
 H="$ROOT/HUMAN"
 A="$ROOT/AI"
 

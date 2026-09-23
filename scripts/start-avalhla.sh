@@ -2,6 +2,15 @@
 # start-avalhla.sh — boot container + launch Avalhla
 set -Eeuo pipefail
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: start-avalhla.sh"
+        echo "       start Ollama and launch Avalhla"
+        exit 0
+        ;;
+esac
+
+
 MODEL=avalhla
 
 echo "🚀 Starting container ollama.service..."
@@ -23,7 +32,7 @@ echo "✅ Ollama ready"
 
 if ! ollama list 2>/dev/null | awk '{print $1}' | grep -q "^${MODEL}:latest$"; then
     echo "⚠️  Model '$MODEL' not found. Building from persona/avalhla.Modelfile..."
-    cd "$HOME/Avalhla/repo"
+    cd "$HOME/Avalhla"
     ollama create "$MODEL" -f persona/avalhla.Modelfile
 fi
 

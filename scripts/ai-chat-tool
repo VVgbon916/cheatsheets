@@ -5,7 +5,7 @@ set -Eeuo pipefail
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVALHLA_MODEL:-avalhla}"
-READ_BIN="$HOME/Avalhla/repo/scripts/ai-read"
+READ_BIN="$HOME/Avalhla/scripts/ai-read"
 MAX_TURNS=6
 
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then

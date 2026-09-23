@@ -30,7 +30,7 @@ run_check() {
     local label="$1" pattern="$2" globs="$3" fix="$4"
     local raw filtered
     raw="$(grep -rInE "$pattern" $globs 2>/dev/null \
-        --exclude-dir=.git --exclude-dir=.ai-memory \
+        --exclude-dir=.git --exclude-dir=.ai-memory --exclude-dir=memory \
         --exclude='*.bak' --exclude='*.bak.*' --exclude='*.pre-*' || true)"
     filtered="$(printf '%s\n' "$raw" | grep -vE "$ALLOW_RE" | grep -vE "$SELF_RE" | sed '/^[[:space:]]*$/d' || true)"
     if [[ -n "$filtered" ]]; then
@@ -46,7 +46,7 @@ run_check_excluding() {
     local label="$1" pattern="$2" globs="$3" fix="$4" exclude="$5"
     local raw filtered
     raw="$(grep -rInE "$pattern" $globs 2>/dev/null \
-        --exclude-dir=.git --exclude-dir=.ai-memory \
+        --exclude-dir=.git --exclude-dir=.ai-memory --exclude-dir=memory \
         --exclude='*.bak' --exclude='*.bak.*' --exclude='*.pre-*' || true)"
     filtered="$(printf '%s\n' "$raw" \
         | grep -vE "$ALLOW_RE" \
@@ -100,7 +100,7 @@ fi
 # portability (opt-in)
 if (( PORTABILITY == 1 )); then
     HARD="$(grep -rInE '/home/[a-zA-Z0-9_]+' scripts systemd 2>/dev/null \
-        --exclude-dir=.git \
+        --exclude-dir=.git --exclude-dir=memory \
         | grep -vE 'SELF_RE|\$HOME' | grep -vE "$SELF_RE" \
         | sed '/^[[:space:]]*$/d' || true)"
     if [[ -n "$HARD" ]]; then

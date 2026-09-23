@@ -3,7 +3,7 @@
 #   date/time, timer schedule, git HEAD, top 3 tasks, next reflection, last brief.
 set -Eeuo pipefail
 
-REPO="${AVA_TASKS_REPO:-$HOME/Avalhla/repo}"
+REPO="${AVA_TASKS_REPO:-$HOME/Avalhla}"
 TASKS="${AVA_TASKS_FILE:-$REPO/TASKS.txt}"
 MEM="$HOME/Avalhla/memory"
 REFLECT_DIR="$MEM/reflections"

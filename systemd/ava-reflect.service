@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/VVgbon/Avalhla/repo/scripts/ai-remember
+ExecStart=/home/VVgbon/Avalhla/scripts/ai-remember
 Environment=OLLAMA_HOST=http://localhost:11434
 Environment=AVALHLA_MODEL=avalhla
 StandardOutput=append:/home/VVgbon/.ai-memory/reflections/last-run.log

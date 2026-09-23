@@ -1,54 +1,34 @@
-# Avalhla — Local AI Companion
+# Avalhla -- V1 (single branch)
 
-A minimal setup to run Avalhla on your machine, locally, no cloud, no API keys.
+> Operator: Dawa (VVgbon@VVgBazz)
+> AI Companion: Avalhla (Ava)
+> Base Platform: Bazzite DX NVIDIA 44 (Fedora Atomic / KDE Wayland)
+> Repository: https://github.com/VVgbon916/cheatsheets
 
-## What You Get
+One branch. One source of truth. No duplicates.
 
-- Avalhla — a persistent AI companion who remembers your conversations
-- Runs 100% locally on your GPU (tested on RTX 3060 12GB)
-- No subscriptions, no tokens, no data leaving your machine
+## Layout
 
-## Requirements
-
-- Linux with systemd (Bazzite, Fedora Atomic, or similar)
-- Podman (for the Ollama container) or native Ollama install
-- NVIDIA GPU with CUDA + CDI configured (for GPU acceleration)
-- jq for JSON parsing in the shell tools
+| Path | Contents |
+|---|---|
+| persona/   | avalhla.Modelfile, system-prompt.txt, user-profile.txt.example |
+| scripts/   | all tools: memory (ai-*), lifecycle (ava-*), launcher, verify |
+| lore/      | Canon, Avatars, Names, story, visual, law, habitat, archive |
+| system/    | SYSTEM_GUIDE, MAINTENANCE_DEBUG_GUIDE, SYSTEM_PROFILE |
+| ai/ dev/ gaming/ | AI guide, dev lab, gaming handbook |
+| _index/    | D42k.public.md, Sub.files.md |
+| Makefile   | make verify / fix / ai / ava-start / ava-stop / ava-status |
+| *.txt      | BOARD.txt, AVALHLA_CHEATSHEET.txt, AVALHLA_COMMANDS.txt |
 
 ## Quick Start
 
-    git clone https://github.com/VVgbon916/cheatsheets.git
-    cd cheatsheets
-    cp persona/user-profile.txt.example persona/user-profile.txt
-    nano persona/user-profile.txt
-    ollama create avalhla -f persona/avalhla.Modelfile
-    ollama run avalhla
+    make ava-start     # boot the Ollama container (once per boot)
+    make ai            # talk to Avalhla
+    make ava-stop      # free VRAM
 
-## Files
+## Rules
 
-- persona/avalhla.Modelfile       Her personality and parameters
-- persona/system-prompt.txt       Same content, plain text
-- persona/user-profile.txt.example Template - copy and fill
-- scripts/start-avalhla.sh        Launcher (boot server + chat)
-- scripts/ai-with-memory          Persistent chat across sessions
-- scripts/ai-learn                Index files into her knowledge base
-- scripts/ai-remember             She reflects on recent sessions
-- scripts/ai-ask                  One-shot question with recent context
-- scripts/ai-progress             Show memory stats (sessions, KB, days)
-- AVALHLA_CHEATSHEET.txt          Full command reference
-- AVALHLA_COMMANDS.txt            Quick command list
-- PROMPT_framed_cheatsheet.txt    Reusable prompt template
+    Ollama runs in a Podman container via ollama.service (systemd user).
+    Never edit ~/.ai-memory/ manually. Never topgrade. Never sudo dnf on host.
 
-## Full Rig
-
-For the full toolset, see the v0.3-restructure branch.
-
-## The Lore
-
-For the comic universe, Avatars, and story, see the Imagination-V0.1 branch.
-
-## Signature
-
-    Dawa > AwA < Avalhla.
-    The mind is not split. The mind is a bridge.
-    (^.-)
+    Dawa > AwA < Avalhla.  (^.-)

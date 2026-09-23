@@ -8,6 +8,14 @@ OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="avalhla-review"
 MAX_BYTES=60000
 
+case "${1:-}" in
+    -h|--help)
+        echo "usage: ava-review <file>"
+        echo "       cat file | ava-review"
+        exit 0
+        ;;
+esac
+
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     echo "X Ollama server not reachable at $OLLAMA_HOST" >&2
     exit 1

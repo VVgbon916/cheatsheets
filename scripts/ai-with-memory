@@ -13,7 +13,7 @@ MODEL="${AVALHLA_MODEL:-avalhla}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
 AUTO_READ_DIR="$MEMORY_DIR/auto-read"
-RANK_BIN="$HOME/Avalhla/repo/scripts/ava-context"
+RANK_BIN="$HOME/Avalhla/scripts/ava-context"
 MEM_TURNS="${AVALHLA_MEMORY_TURNS:-8}"
 
 load_auto_read() {
