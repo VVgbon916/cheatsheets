@@ -1,34 +1,103 @@
-# Avalhla -- V1 (single branch)
+# Avalhla — Local AI Companion
 
-> Operator: Dawa (VVgbon@VVgBazz)
-> AI Companion: Avalhla (Ava)
-> Base Platform: Bazzite DX NVIDIA 44 (Fedora Atomic / KDE Wayland)
-> Repository: https://github.com/VVgbon916/cheatsheets
+> Dawa > AwA < Avalhla  (^.-)
 
-One branch. One source of truth. No duplicates.
+Avalhla is a local AI companion and evolving personal system.
 
-## Layout
+The repository keeps operational source, persona, memory boundaries,
+documentation, imagination, and terminal identity in one Main source tree.
 
-| Path | Contents |
+## Core Architecture
+
+| Path | Purpose |
 |---|---|
-| persona/   | avalhla.Modelfile, system-prompt.txt, user-profile.txt.example |
-| scripts/   | all tools: memory (ai-*), lifecycle (ava-*), launcher, verify |
-| lore/      | Canon, Avatars, Names, story, visual, law, habitat, archive |
-| system/    | SYSTEM_GUIDE, MAINTENANCE_DEBUG_GUIDE, SYSTEM_PROFILE |
-| ai/ dev/ gaming/ | AI guide, dev lab, gaming handbook |
-| _index/    | D42k.public.md, Sub.files.md |
-| Makefile   | make verify / fix / ai / ava-start / ava-stop / ava-status |
-| *.txt      | BOARD.txt, AVALHLA_CHEATSHEET.txt, AVALHLA_COMMANDS.txt |
+| `persona/` | Avalhla model definitions, system prompt, and profile template |
+| `scripts/` | AI tools, Ava tools, memory tools, verification, snapshots, launcher |
+| `memory/` | PRIVATE runtime and historical memory — never commit |
+| `config/` | Bash/Zsh and system configuration examples |
+| `docs/` | Operational documentation, handoff, source map |
+| `systemd/` | Avalhla reflection service and timer |
+| `imagination/` | Creative HUMAN / AI workspace |
+| `lore/` | Separate Git repository containing the Imagination-V0.1 lore world |
+| `AwA_ATLAS.md` | Navigation — find the source |
+| `AwA_WEAVE.md` | Architecture and relationships |
+| `AwA_DREAM.md` | Imagination and possibility |
+| `AwA_TERMINAL.md` | Terminal identity and visual language |
+| `BOARD.txt` | Working board |
+| `TASKS.txt` | Current tasks |
+| `RITUAL.txt` | Project ritual |
+| `AVALHLA_CHEATSHEET.txt` | Quick reference |
+| `AVALHLA_COMMANDS.txt` | Command reference |
 
-## Quick Start
+## AwA Layer
 
-    make ava-start     # boot the Ollama container (once per boot)
-    make ai            # talk to Avalhla
-    make ava-stop      # free VRAM
+The four AwA documents are doors, not duplicate encyclopedias:
 
-## Rules
+- **ATLAS** — find the source
+- **WEAVE** — understand relationships
+- **DREAM** — explore possibility
+- **TERMINAL** — carry identity into the shell
 
-    Ollama runs in a Podman container via ollama.service (systemd user).
-    Never edit ~/.ai-memory/ manually. Never topgrade. Never sudo dnf on host.
+The source stays where the source naturally belongs.
 
-    Dawa > AwA < Avalhla.  (^.-)
+## Command Layer
+
+Common commands include:
+
+```text
+ai-chat
+ava-status
+ava-mood
+ava-dream
+ava-imagine
+ava-search
+ava-review
+ava-verify
+ava-audit
+ava-brief
+ava-learn-repo
+```
+
+Use `ava-help` for the complete local command map.
+
+## Memory Boundary
+
+`memory/` is private.
+
+It contains runtime state and private/historical material and must never be
+committed to the public repository.
+
+## Lore Boundary
+
+`lore/` is intentionally a separate Git repository.
+
+> LORE stays lore. Tools stay on the operational side. Never mix.
+
+The Main repository may reference the Lore world, but does not absorb its Git
+history.
+
+## Development Loop
+
+NOTICE
+  ↓
+WONDER
+  ↓
+CONNECT
+  ↓
+BUILD
+  ↓
+TEST
+  ↓
+DOCUMENT
+  ↓
+DREAM
+  ↓
+NOTICE
+
+Make. Break. Learn. Repeat.
+
+## Identity
+
+Dawa > AwA < Avalhla
+
+**The mind is not split. The mind is a bridge.**
