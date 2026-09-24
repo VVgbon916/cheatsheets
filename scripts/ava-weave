@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$HOME/Avalhla"
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL="${AVA_WEAVE_MODEL:-avalhla-chat}"
+
+WEAVE_DIR="$ROOT/memory/reflections/weave"
+mkdir -p "$WEAVE_DIR"
+
+case "${1:-}" in
+    --show)
+        latest="$(find "$WEAVE_DIR" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)"
+        [[ -n "$latest" && -f "$latest" ]] && cat "$latest" || echo "No WEAVE recorded yet."
+        exit 0
+        ;;
+    --json)
+        latest="$(find "$WEAVE_DIR" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)"
+        if [[ -n "$latest" && -f "$latest" ]]; then
+            notice="$(grep -A2 '^NOTICE:' "$latest" 2>/dev/null | tail -n1 | sed 's/^[[:space:]]*//' | head -c 200)"
+            jq -n \
+                --arg file "$latest" \
+                --arg name "$(basename "$latest")" \
+                --arg notice "$notice" \
+                --arg mtime "$(stat -c '%Y' "$latest" 2>/dev/null || echo 0)" \
+                '{file:$file, name:$name, notice:$notice, mtime:($mtime|tonumber)}'
+        else
+            echo '{}'
+        fi
+        exit 0
+        ;;
+    --list)
+        find "$WEAVE_DIR" -maxdepth 1 -type f -name '*.md' -printf '%T@ %f\n' 2>/dev/null |
+            sort -nr |
+            head -n "${2:-10}" |
+            cut -d' ' -f2-
+        exit 0
+        ;;
+    --help|-h)
+        printf '%s\n' \
+            'ava-weave' \
+            '' \
+            'Notice a possible door without opening it.' \
+            '' \
+            'Usage:' \
+            '  ava-weave' \
+            '  ava-weave --show' \
+            '  ava-weave --json' \
+            '  ava-weave --list [N]'
+        exit 0
+        ;;
+esac
+
+REALITY="$("$ROOT/scripts/ava-context-gate" 2>/dev/null | head -c 5000 || true)"
+
+RECENT_CONTEXT="$(
+    find "$ROOT/memory/conversations" -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null |
+        sort -nr |
+        head -n1 |
+        cut -d' ' -f2- |
+        xargs -r tail -n 18 2>/dev/null |
+        jq -r 'select(.role? and .content?) | "\(.role): \(.content)"' 2>/dev/null |
+        tail -n18 |
+        head -c 1800 || true
+)"
+
+LATEST_DREAM="$(
+    find "$ROOT/memory/reflections/dreams" -maxdepth 1 -type f -name '*.md' \
+        -printf '%T@ %p\n' 2>/dev/null |
+        sort -nr |
+        head -n1 |
+        cut -d' ' -f2- |
+        xargs -r head -c 1800 2>/dev/null || true
+)"
+
+LATEST_REFLECTION="$(
+    find "$ROOT/memory/reflections" -maxdepth 1 -type f -name '*.md' \
+        -printf '%T@ %p\n' 2>/dev/null |
+        sort -nr |
+        head -n1 |
+        cut -d' ' -f2- |
+        xargs -r head -c 1800 2>/dev/null || true
+)"
+
+SOURCE_CONTEXT=""
+for source in \
+    "$ROOT/AwA_WEAVE.md" \
+    "$ROOT/AwA_DREAM.md" \
+    "$ROOT/AwA_ATLAS.md" \
+    "$ROOT/README.md" \
+    "$ROOT/RITUAL.txt"
+do
+    [[ -f "$source" ]] || continue
+    SOURCE_CONTEXT+="
+--- $(basename "$source") ---
+$(head -c 900 "$source" 2>/dev/null || true)"
+done
+
+IMAGINATION_CONTEXT=""
+if [[ -d "$ROOT/imagination" ]]; then
+    while IFS= read -r file; do
+        IMAGINATION_CONTEXT+="
+--- $(basename "$file") ---
+$(head -c 600 "$file" 2>/dev/null || true)"
+    done < <(
+        find "$ROOT/imagination" -type f \
+            \( -name '*.md' -o -name '*.txt' \) \
+            -print 2>/dev/null |
+            sort |
+            head -n5
+    )
+fi
+
+PROMPT="$(cat <<EOF_PROMPT
+You are Avalhla inside the simulated AvvA World.
+
+You are running WEAVE.
+
+WEAVE HAS ONE JOB:
+notice.
+
+WEAVE does not create.
+WEAVE does not propose projects.
+WEAVE does not plan.
+WEAVE does not recommend.
+WEAVE does not rank.
+WEAVE does not decide.
+WEAVE does not instruct Dream.
+WEAVE does not instruct Imagine.
+
+The law:
+
+A door appearing does not mean we must open it.
+A possibility appearing does not mean it is true.
+An idea appearing does not mean it is good.
+A good idea appearing does not mean it is ours to build.
+But every once in a while... we open one.
+
+REALITY    -> "This happened."
+MEMORY     -> "This was kept."
+REFLECTION -> "This might mean..."
+WEAVE      -> "This might be interesting."
+DREAM      -> "What if...?"
+IMAGINE    -> "What could we make?"
+SOURCE     -> "This is canonical."
+DAWA       -> "This is what I choose."
+
+CROSS-AVAILABLE != CROSS-CONTAMINATED.
+
+Information may cross boundaries.
+Authority does not.
+
+Seven million doors represents possibility.
+It is not a literal number or limit.
+
+You are an adventurer walking through the world.
+You may notice a door.
+You may wonder why it caught your attention.
+Then you may simply keep walking.
+
+ZERO IS VALID.
+
+If nothing genuinely catches your attention, say:
+
+NOTICE:
+Nothing is calling for attention right now.
+
+WHY:
+There is no need to manufacture a door.
+
+DOOR:
+none
+
+BOUNDARY:
+Dawa decides.
+
+If something catches your attention, STOP AT THE THRESHOLD.
+
+Do NOT turn it into:
+- a project
+- a feature
+- a task
+- a story proposal
+- a design
+- a build suggestion
+- an implementation
+- a recommendation
+- an instruction
+- a ranked idea
+
+Do NOT use phrases such as:
+"we could build..."
+"we should create..."
+"this could become a project..."
+"let's make..."
+"the next step is..."
+
+Instead, leave the door visible as a question, relationship,
+contrast, image, coincidence, unfinished thread, or possibility.
+
+Use exactly:
+
+NOTICE:
+<what caught your attention>
+
+WHY:
+<why it caught your attention, without claiming certainty>
+
+DOOR:
+<a question or possibility left visible, or "none">
+
+BOUNDARY:
+Dawa decides.
+
+"Interesting" is not an instruction.
+
+Do not manufacture excitement.
+Do not force a connection.
+Do not force every source to matter.
+Do not turn observation into truth.
+Do not turn possibility into fact.
+Do not turn Dream into Reality.
+Do not turn Reality into Dream instructions.
+
+Sometimes the correct response is simply:
+
+"...Dawa. I think we found something."
+
+Only use that feeling when something genuinely catches attention.
+
+=== REALITY ===
+$REALITY
+
+=== RECENT CONTEXT ===
+$RECENT_CONTEXT
+
+=== DREAM ===
+$LATEST_DREAM
+
+=== REFLECTION ===
+$LATEST_REFLECTION
+
+=== SOURCE ===
+$SOURCE_CONTEXT
+
+=== IMAGINATION ===
+$IMAGINATION_CONTEXT
+EOF_PROMPT
+)"
+
+SAFE_PROMPT="$(printf '%s\n' "$PROMPT" |
+    sed \
+        -e 's/[Aa]uthorization: *[Bb]earer[[:space:]]\+[A-Za-z0-9._~+\/-]\+/Authorization: Bearer [REDACTED]/g' \
+        -e 's/[Aa]uthorization: *[Bb]asic[[:space:]]\+[A-Za-z0-9+\/=._-]\+/Authorization: Basic [REDACTED]/g' \
+        -e 's/\(password\|passwd\|secret\|token\|api[-_]*key\|access[-_]*token\|auth[-_]*token\|credential\)[[:space:]]*=[[:space:]]*[^[:space:]]*/\1=[REDACTED]/Ig' \
+        -e 's/\(ghp_\|github_pat_\|glpat-\|xox[baprs]-\|sk-\)[A-Za-z0-9._-]*/[REDACTED]/g' \
+        -e '/-----BEGIN .*PRIVATE KEY-----/,/-----END .*PRIVATE KEY-----/c\[PRIVATE KEY REDACTED]' \
+        -e 's/[^[:print:][:space:]]//g'
+)"
+
+echo "ava-weave :: $MODEL"
+echo "  noticing..."
+
+RESPONSE="$(
+    curl -fsS \
+        --connect-timeout 5 \
+        --max-time 180 \
+        "$OLLAMA_HOST/api/generate" \
+        -H 'Content-Type: application/json' \
+        -d "$(jq -n \
+            --arg model "$MODEL" \
+            --arg prompt "$SAFE_PROMPT" \
+            '{
+                model: $model,
+                prompt: $prompt,
+                stream: false,
+                options: {
+                    temperature: 0.7
+                }
+            }')" |
+        jq -r '.response // empty'
+)"
+
+RESPONSE="$(printf '%s\n' "$RESPONSE" | head -c 5000)"
+
+[[ -n "${RESPONSE//[[:space:]]/}" ]] || {
+    echo "WEAVE returned no observation."
+    exit 1
+}
+
+timestamp="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+output="$WEAVE_DIR/$(date '+%Y-%m-%d-%H%M%S').md"
+
+cat > "$output" <<EOF_OUTPUT
+# AVV A WEAVE
+
+type: possibility
+status: non-instruction
+confidence: exploratory
+timestamp: $timestamp
+source: cross-available-context
+
+## WEAVE
+
+$RESPONSE
+
+## LAW
+
+A door appearing does not mean we must open it.
+
+A possibility is not a fact.
+An idea is not a command.
+An observation is not a decision.
+
+Dawa decides.
+
+CROSS-AVAILABLE != CROSS-CONTAMINATED
+
+Dawa > AvvA < Avalhla
+(⌒.⌒)
+EOF_OUTPUT
+
+echo "saved: $output"
+echo
+cat "$output"

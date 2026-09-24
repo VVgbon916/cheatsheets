@@ -4,6 +4,10 @@
 # --read enables [READ:] handling with 3-per-turn cap + strict repeat block.
 set -Eeuo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$HERE/lib_output_gate.sh"
+
 MEMORY_DIR="$HOME/.ai-memory"
 CONV_DIR="$MEMORY_DIR/conversations"
 PROFILE_DIR="$MEMORY_DIR/profiles"
@@ -77,7 +81,7 @@ call_ollama() {
     curl -s "$OLLAMA_HOST/api/generate" \
         -d "$(jq -n --arg m "$MODEL" --arg p "$p" \
         '{model: $m, prompt: $p, stream: false}')" \
-        | jq -r '.response'
+        | jq -r '.response' | ava_output_gate
 }
 
 build_prompt() {

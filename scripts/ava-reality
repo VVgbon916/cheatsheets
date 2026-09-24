@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$HOME/Avalhla"
+REALITY_DIR="$ROOT/memory/reality"
+SIGNAL="$REALITY_DIR/latest.md"
+HISTORY_FILE="$HOME/.zsh_history"
+MAX_HISTORY_LINES=240
+MAX_OUTPUT_BYTES=12000
+
+mkdir -p "$REALITY_DIR"
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$HERE/lib_redact.sh"
+
+redact() { ava_redact; }
+
+classify() {
+    local text="$1"
+    local lower
+    lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
+    local -a themes=()
+
+    [[ "$lower" =~ reflection|reflect|weave|awa|avva ]] && themes+=("reflection")
+    [[ "$lower" =~ memory|remember|history|knowledge ]] && themes+=("memory")
+    [[ "$lower" =~ dream|imagine|imagination ]] && themes+=("dream")
+    [[ "$lower" =~ identity|persona|avalhla|avatar ]] && themes+=("identity")
+    [[ "$lower" =~ terminal|shell|zsh|bash|command ]] && themes+=("terminal")
+    [[ "$lower" =~ git|commit|branch|merge|push|pull ]] && themes+=("building")
+    [[ "$lower" =~ test|verify|debug|error|fix ]] && themes+=("testing")
+    [[ "$lower" =~ code|script|program|develop ]] && themes+=("coding")
+
+    if ((${#themes[@]} == 0)); then
+        printf '%s\n' "general"
+    else
+        printf '%s\n' "${themes[@]}" | awk '!seen[$0]++' | paste -sd ','
+    fi
+}
+
+events=()
+history_evidence=""
+
+if [[ -r "$HISTORY_FILE" ]]; then
+    history_evidence="$(tail -n "$MAX_HISTORY_LINES" "$HISTORY_FILE" 2>/dev/null | redact | tail -n 160)"
+fi
+
+if [[ -n "$history_evidence" ]]; then
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        case "$line" in
+            *git\ commit*|*git\ merge*|*git\ rebase*|*git\ push*|*git\ pull*)
+                events+=("repository activity") ;;
+            *ava-dream*|*ava-imagine*|*dream*|*imagination*)
+                events+=("dream/imagination activity") ;;
+            *reflection*|*ava-review*|*ava-explain*|*ava-context*|*ava-audit*)
+                events+=("reflection/analysis activity") ;;
+            *memory*|*remember*|*ai-read*|*ai-learn*)
+                events+=("memory/learning activity") ;;
+            *test*|*verify*|*debug*|*shellcheck*)
+                events+=("testing/debugging activity") ;;
+            *Avalhla*|*Avalhla/*|*~/Avalhla*)
+                events+=("Avalhla project activity") ;;
+        esac
+    done <<< "$history_evidence"
+fi
+
+repo_evidence="$(git -C "$ROOT" log -n 12 --format='%h %s' 2>/dev/null | redact | head -n 12 || true)"
+repo_status="$(git -C "$ROOT" status --short 2>/dev/null | redact | head -n 80 || true)"
+
+themes="$(classify "$history_evidence $repo_evidence")"
+
+activity_count="$(printf '%s\n' "${events[@]:-}" | awk 'NF{a[$0]++} END{for(k in a) print a[k] "|" k}' | sort -rn | head -n 8 || true)"
+
+if [[ "${1:-}" == "--json" ]]; then
+    ts="$(date -Iseconds)"
+    jq -n \
+        --arg ts "$ts" \
+        --arg themes "$themes" \
+        --argjson events "$(printf '%s\n' "${events[@]:-}" | jq -R . | jq -s 'map(select(length>0))|unique')" \
+        --arg file "$SIGNAL" \
+        --arg mtime "$(stat -c '%Y' "$SIGNAL" 2>/dev/null || echo 0)" \
+        '{ts:$ts, themes:$themes, events:$events, file:$file, mtime:($mtime|tonumber)}'
+    exit 0
+fi
+
+{
+    printf '%s\n' '# REALITY SIGNAL'
+    printf '%s\n' ''
+    printf '%s\n' 'type: sanitized'
+    printf 'timestamp: %s\n' "$(date -Iseconds)"
+    printf 'source: terminal-history + repository-state\n'
+    printf 'confidence: observational\n'
+    printf 'themes: %s\n' "$themes"
+    printf '%s\n' ''
+    printf '%s\n' '## Observed activity'
+    if [[ -n "$activity_count" ]]; then
+        while IFS='|' read -r count label; do
+            [[ -n "$label" ]] && printf '%s\n' "- $label"
+        done <<< "$activity_count"
+    else
+        printf '%s\n' '- no classified activity'
+    fi
+    printf '%s\n' ''
+    printf '%s\n' '## Repository signal'
+    if [[ -n "$repo_status" ]]; then
+        printf '%s\n' '- repository has observable working-tree activity'
+    else
+        printf '%s\n' '- repository working tree is currently clean'
+    fi
+    printf '%s\n' ''
+    printf '%s\n' '## Interpretation boundary'
+    printf '%s\n' 'This is evidence of recent activity, not a permanent fact about Dawa.'
+    printf '%s\n' 'It may inform Memory, Reflection, or Dream.'
+    printf '%s\n' 'It does not overwrite them.'
+    printf '%s\n' ''
+    printf '%s\n' '## Cross-Availability'
+    printf '%s\n' 'REALITY -> sanitized evidence -> signal -> available context'
+    printf '%s\n' 'CROSS-AVAILABLE != CROSS-CONTAMINATED'
+} > "$SIGNAL"
+
+if [[ "${1:-}" == "--show" ]]; then
+    cat "$SIGNAL"
+else
+    printf '%s\n' "$SIGNAL"
+fi

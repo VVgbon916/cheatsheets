@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# ava-autoread -- what she reads every time.
+set -Eeuo pipefail
+
+BOX="$HOME/.ai-memory/auto-read"
+mkdir -p "$BOX"
+
+list_json() {
+    local out="[]"
+    if compgen -G "$BOX/*" >/dev/null; then
+        out="$(
+            for f in "$BOX"/*; do
+                [[ -f "$f" ]] || continue
+                local name size
+                name="$(basename "$f")"
+                size="$(stat -c '%s' "$f" 2>/dev/null || echo 0)"
+                jq -n --arg n "$name" --argjson s "$size" '{name:$n, size:$s}'
+            done | jq -s '.'
+        )"
+    fi
+    printf '%s' "$out"
+}
+
+case "${1:-}" in
+    --json)
+        list_json
+        exit 0 ;;
+    --quiet)
+        if compgen -G "$BOX/*" >/dev/null; then
+            local_n="$(ls -1 "$BOX" 2>/dev/null | wc -l)"
+            printf '%s file(s) she always reads\n' "$local_n"
+        else
+            printf 'empty\n'
+        fi
+        exit 0 ;;
+    --list|"")
+        echo ""
+        echo "Ava :: auto-read box"
+        echo "  $BOX"
+        echo ""
+        if compgen -G "$BOX/*" >/dev/null; then
+            for f in "$BOX"/*; do
+                [[ -f "$f" ]] || continue
+                printf '  %-30s  %s\n' "$(basename "$f")" "$(du -h "$f" | cut -f1)"
+            done
+        else
+            echo "  (empty)"
+        fi
+        echo ""
+        exit 0 ;;
+    --show)
+        if compgen -G "$BOX/*" >/dev/null; then
+            for f in "$BOX"/*; do
+                [[ -f "$f" ]] || continue
+                echo "──── $(basename "$f") ────"
+                cat "$f"
+                echo
+            done
+        else
+            echo "(box is empty)"
+        fi
+        exit 0 ;;
+    --rm)
+        [[ -z "${2:-}" ]] && { echo "usage: ava-autoread --rm <name>" >&2; exit 2; }
+        rm -f "$BOX/$2" && echo "removed: $2"
+        exit 0 ;;
+    --clear)
+        rm -f "$BOX"/* 2>/dev/null || true
+        echo "box cleared"
+        exit 0 ;;
+    -h|--help)
+        cat <<'EOT'
+ava-autoread <file>       add a file to the box
+ava-autoread --list       what's in the box
+ava-autoread --show       print combined block
+ava-autoread --json       machine-readable
+ava-autoread --quiet      one-line count
+ava-autoread --rm <name>  remove a file
+ava-autoread --clear      empty the box
+EOT
+        exit 0 ;;
+    *)
+        [[ -f "$1" ]] || { echo "file not found: $1" >&2; exit 1; }
+        cp "$1" "$BOX/$(basename "$1")"
+        echo "added: $(basename "$1")"
+        ;;
+esac

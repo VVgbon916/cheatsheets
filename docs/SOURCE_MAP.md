@@ -19,6 +19,7 @@
 | `scripts/ai-chat-tool` | Read-only file bridge tool |
 | `scripts/start-avalhla.sh` | Launch ollama + container |
 | `scripts/commands-board.sh` | Harvest all commands into board |
+| `scripts/ava-reality` | Sanitized terminal/repository Reality Signal |
 
 ## Local (not in repo)
 

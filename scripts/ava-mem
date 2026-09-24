@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# ava-mem -- what she remembers.
+set -Eeuo pipefail
+
+MEM="$HOME/.ai-memory"
+CONV="$MEM/conversations"
+KB="$MEM/knowledge-base"
+AUTO="$MEM/auto-read"
+REFL="$MEM/reflections"
+
+count_files() { find "$1" -type f 2>/dev/null | wc -l; }
+count_lines() { cat "$1" 2>/dev/null | wc -l; }
+
+conv_files=0; conv_lines=0
+if compgen -G "$CONV/*.jsonl" >/dev/null; then
+    conv_files=$(ls -1 "$CONV"/*.jsonl 2>/dev/null | wc -l)
+    conv_lines=$(cat "$CONV"/*.jsonl 2>/dev/null | wc -l)
+fi
+kb_files=$(count_files "$KB")
+auto_files=$(count_files "$AUTO")
+refl_files=$(count_files "$REFL")
+
+case "${1:-}" in
+    --json)
+        jq -n \
+            --argjson conv "$conv_files" \
+            --argjson lines "$conv_lines" \
+            --argjson kb "$kb_files" \
+            --argjson auto "$auto_files" \
+            --argjson refl "$refl_files" \
+            '{conversations:$conv, turns:$lines, kb:$kb, auto_read:$auto, reflections:$refl}'
+        exit 0 ;;
+    --quiet)
+        printf '%s talks · %s reflections · auto-read %s · kb %s\n' \
+            "$conv_files" "$refl_files" "$auto_files" "$kb_files"
+        exit 0 ;;
+    -h|--help)
+        echo "usage: ava-mem [--json|--quiet]"
+        exit 0 ;;
+esac
+
+echo ""
+echo "Ava :: memory"
+echo "  conversations : $conv_files files · $conv_lines turns"
+echo "  knowledge base: $kb_files files"
+echo "  auto-read     : $auto_files files"
+echo "  reflections   : $refl_files files"
+echo ""

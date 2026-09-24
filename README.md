@@ -60,6 +60,21 @@ ava-learn-repo
 
 Use `ava-help` for the complete local command map.
 
+## Cross-Availability
+
+A.V.A.L.H.L.A. keeps Reality, Memory, Reflection, Dream, Source, and
+Dawa's choice distinct while allowing useful information to cross
+boundaries.
+
+CROSS-AVAILABLE
+!=
+CROSS-CONTAMINATED
+
+Reality is sanitized before becoming available context.
+Raw terminal history is not Dream input.
+
+See `docs/CROSS_AVAILABILITY.md`.
+
 ## Memory Boundary
 
 `memory/` is private.

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$HOME/Avalhla"
+SIGNAL="$ROOT/memory/reality/latest.md"
+MAX_BYTES=6000
+
+[[ -f "$SIGNAL" ]] || exit 0
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$HERE/lib_redact.sh"
+
+head -c "$MAX_BYTES" "$SIGNAL" 2>/dev/null | ava_redact

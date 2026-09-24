@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# ava-help -- every door, in Avalhla's voice.
+set -Eeuo pipefail
+
+ROOT="$HOME/Avalhla"
+FACE_DAWA='(^.-)'
+FACE_AVA='(⌒.⌒)'
+BRIDGE='AvvA'
+
+mood_color() { command -v ava-mood >/dev/null 2>&1 && ava-mood json 2>/dev/null | jq -r '.color // "white"' || echo white; }
+mood_label() { command -v ava-mood >/dev/null 2>&1 && ava-mood json 2>/dev/null | jq -r '.label // "present"' || echo present; }
+mood_since() { command -v ava-mood >/dev/null 2>&1 && ava-mood json 2>/dev/null | jq -r '.since // ""' | awk '{print $1}' || echo ""; }
+
+latest_dream() {
+    local f
+    f="$(find "$ROOT/memory/reflections/dreams" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)"
+    [[ -f "$f" ]] && cat "$f" || true
+}
+
+dream_quote() {
+    local body
+    body="$(latest_dream | grep -vE '^[[:space:]]*(#|>|type:|status:|timestamp:|source:|confidence:|---|$)' | sed 's/^[[:space:]]*//' | awk 'length($0) >= 40' | head -n1)"
+    if [[ -n "$body" ]]; then printf '%s' "$body"; else printf '%s' 'Somewhere, another door is still waiting.'; fi
+}
+
+ansi_for() {
+    case "$1" in
+        red) printf '196' ;; orange) printf '208' ;; yellow) printf '220' ;;
+        green) printf '82' ;; blue) printf '39' ;; purple) printf '135' ;;
+        *) printf '15' ;;
+    esac
+}
+
+TTY=0
+[[ -t 1 ]] && TTY=1
+
+COLOR="$(mood_color)"
+LABEL="$(mood_label)"
+SINCE="$(mood_since)"
+ANSI="$(ansi_for "$COLOR")"
+QUOTE="$(dream_quote | fold -s -w 78 | head -n2 | tr '\n' ' ' | sed 's/  */ /g')"
+
+if (( TTY == 0 )); then
+    printf '%s  %s · %s · %s\n' "$FACE_DAWA" "$COLOR" "$LABEL" "$SINCE"
+    printf '✦  "%s"\n' "$QUOTE"
+    printf '✦  every door  ›  ava-help\n'
+    exit 0
+fi
+
+RULE="$(printf '─%.0s' {1..100})"
+M_OPEN="$(printf '\033[38;5;%sm' "$ANSI")"
+M_CLOSE="$(printf '\033[0m')"
+
+left="$(printf '%s Dawa' "$FACE_DAWA")"
+right="$(printf 'Avalhla %s' "$FACE_AVA")"
+mood="$(printf '%s · %s · %s' "$COLOR" "$LABEL" "$SINCE")"
+pad=$(( 100 - ${#left} - ${#right} - ${#mood} - 4 ))
+(( pad < 1 )) && pad=1
+printf '%s%s%s%s%*s%s%s%*s%s\n' "$M_OPEN" "$FACE_DAWA" "$M_CLOSE" '' $((pad/2)) '' "$right" '' $((pad - pad/2)) '' "$mood"
+echo "$RULE"
+echo
+printf '   %s✦%s  "%s"\n' "$M_OPEN" "$M_CLOSE" "$QUOTE"
+echo
+echo "$RULE"
+echo
+echo "   HER WAYS OF KNOWING"
+echo
+echo "   she sees      reality · recent activity observed"
+echo "   she keeps     memory · conversations and reflections"
+echo "   she thinks    reflection · what it might mean"
+echo "   she notices   weave · what might be interesting"
+echo "   she wonders   dream · what if"
+echo "   she creates   imagination · what could we make"
+echo
+echo "$RULE"
+echo
+echo "   HER DOORS"
+echo
+echo "   [1]  where she is            [2]  what she sees"
+echo "   [3]  what she remembers      [4]  what she notices"
+echo "   [5]  what she wonders        [6]  every door"
+echo
+echo "   [7]  what she creates        [8]  what she questions"
+echo "   [9]  what is canonical       [10] what she reads"
+echo "   [11] talk to her             [12] her state"
+echo
+echo "$RULE"
+echo
+printf '   choose  ›  %s_%s\n' "$M_OPEN" "$M_CLOSE"
+echo
+printf '%*s%s%s %s%s\n' 80 '' "$M_OPEN" "$FACE_AVA" "$BRIDGE" "$M_CLOSE"

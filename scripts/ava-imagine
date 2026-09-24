@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# ava-imagine -- generate + manage imagination/ entries.
 set -Eeuo pipefail
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
@@ -70,13 +69,11 @@ rebuild_ai_index() {
     } > "$A/index.md"
 }
 
-# extract body prose from a HUMAN file (between first and second ``` fence, drop frame lines)
 extract_body() {
     local f="$1"
     awk '
         /^```$/ { c++; next }
         c == 1 {
-            # inside first fence -> keep content, drop frame lines
             if ($0 ~ /^\+[-=]+\+$/) next
             if ($0 ~ /^\|.*\|$/) next
             print
@@ -99,12 +96,33 @@ write_ai_from_body() {
 
 cmd="${1:-help}"
 case "$cmd" in
+    --json)
+        count_h=0; count_a=0
+        [[ -d "$H" ]] && count_h=$(find "$H" -maxdepth 1 -type f -name '*.md' ! -name 'index.md' 2>/dev/null | wc -l)
+        [[ -d "$A" ]] && count_a=$(find "$A" -maxdepth 1 -type f -name '*.md' ! -name 'index.md' 2>/dev/null | wc -l)
+        latest_h="$(find "$H" -maxdepth 1 -type f -name '*.md' ! -name 'index.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2-)"
+        jq -n \
+            --argjson human "$count_h" \
+            --argjson ai "$count_a" \
+            --arg latest "$latest_h" \
+            '{human:$human, ai:$ai, latest:$latest}'
+        exit 0
+        ;;
+    --quiet)
+        count_h=0; count_a=0
+        [[ -d "$H" ]] && count_h=$(find "$H" -maxdepth 1 -type f -name '*.md' ! -name 'index.md' 2>/dev/null | wc -l)
+        [[ -d "$A" ]] && count_a=$(find "$A" -maxdepth 1 -type f -name '*.md' ! -name 'index.md' 2>/dev/null | wc -l)
+        printf '%s human · %s ai\n' "$count_h" "$count_a"
+        exit 0
+        ;;
     help|-h|--help)
         cat <<'EOT'
 ava-imagine new "topic"     generate HUMAN + AI
 ava-imagine build           regenerate AI/ + indexes (no LLM)
 ava-imagine list            list entries
 ava-imagine show <slug>     cat HUMAN/<slug>.md
+ava-imagine --json          machine-readable counts
+ava-imagine --quiet         one-line count
 EOT
         exit 0
         ;;
@@ -188,7 +206,6 @@ EOF
 
         HF="$H/${SLUG}.md"
 
-        # HUMAN: frame + wrapped prose
         {
             echo "# $TITLE"
             echo ""
@@ -209,6 +226,8 @@ EOF
             echo '```'
             echo ""
             echo "_imagination -- not fact._"
+            echo ""
+            echo "(⌒.⌒)"
         } > "$HF"
 
         write_ai_from_body "$SLUG" "$STAMP" "$COLOR" "$BODY"

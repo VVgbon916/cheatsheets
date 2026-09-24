@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# ava-dream -- idle reflection. Ava writes freely to reflections/dreams/.
-#   ava-dream                run once
-#   ava-dream --seed "X"     seed with a topic
-#   ava-dream --show         print last dream
-#   ava-dream --list         list recent dreams
-#   ava-dream --list 20      list N
 set -Eeuo pipefail
 
+ROOT="$HOME/Avalhla"
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 MODEL="${AVA_DREAM_MODEL:-avalhla-chat}"
 MEM="$HOME/Avalhla/memory"
@@ -22,10 +17,11 @@ LIST_N=10
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --show) MODE="show"; shift ;;
+        --json) MODE="json"; shift ;;
         --list) MODE="list"; [[ "${2:-}" =~ ^[0-9]+$ ]] && { LIST_N="$2"; shift; }; shift ;;
         --seed) SEED="$2"; shift 2 ;;
         -h|--help)
-            echo "usage: ava-dream [--show | --list [N] | --seed \"topic\"]"
+            echo "usage: ava-dream [--show | --json | --list [N] | --seed \"topic\"]"
             exit 0 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
     esac
@@ -33,7 +29,6 @@ done
 
 mkdir -p "$DREAM_DIR"
 
-# strip non-ASCII punctuation the model sneaks in
 strip_nonascii() {
     sed -e 's/—/--/g; s/–/-/g' \
         -e "s/’/'/g; s/‘/'/g" \
@@ -42,6 +37,22 @@ strip_nonascii() {
         -e 's/•/*/g' \
         -e 's/[^[:print:][:space:]]//g'
 }
+
+if [[ "$MODE" == "json" ]]; then
+    latest="$(ls -1t "$DREAM_DIR"/*.md 2>/dev/null | head -1 || true)"
+    if [[ -n "$latest" && -f "$latest" ]]; then
+        body="$(grep -vE '^[[:space:]]*(#|>|type:|status:|timestamp:|source:|confidence:|---|$)' "$latest" 2>/dev/null | sed 's/^[[:space:]]*//' | awk 'length($0) >= 40' | head -n1)"
+        jq -n \
+            --arg file "$latest" \
+            --arg name "$(basename "$latest")" \
+            --arg quote "$body" \
+            --arg mtime "$(stat -c '%Y' "$latest" 2>/dev/null || echo 0)" \
+            '{file:$file, name:$name, quote:$quote, mtime:($mtime|tonumber)}'
+    else
+        echo '{}'
+    fi
+    exit 0
+fi
 
 if [[ "$MODE" == "show" ]]; then
     LAST="$(ls -1t "$DREAM_DIR"/*.md 2>/dev/null | head -1 || true)"
@@ -71,17 +82,52 @@ if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
     exit 1
 fi
 
-RECENT_CONV="$(ls -1t "$CONV_DIR"/*.jsonl 2>/dev/null | head -1 || true)"
 RECENT_TXT=""
+RECENT_CONV="$(ls -1t "$CONV_DIR"/*.jsonl 2>/dev/null | head -1 || true)"
 if [[ -n "$RECENT_CONV" ]]; then
-    RECENT_TXT="$(tail -n 12 "$RECENT_CONV" 2>/dev/null \
-        | jq -r '"\(.role): \(.content | .[0:200])"' 2>/dev/null \
-        | head -c 1500 || true)"
+    RECENT_TXT="$(tail -n 18 "$RECENT_CONV" 2>/dev/null \
+        | jq -r '"\(.role): \(.content | .[0:300])"' 2>/dev/null \
+        | head -c 2200 || true)"
 fi
 
-LAST_REFLECT="$(ls -1t "$REFLECT_DIR"/[0-9]*.md 2>/dev/null | head -1 || true)"
+REALITY_SIGNAL=""
+if [[ -x "$HOME/Avalhla/scripts/ava-context-gate" ]]; then
+    REALITY_SIGNAL="$("$HOME/Avalhla/scripts/ava-context-gate" 2>/dev/null | head -c 6000 || true)"
+fi
+
 REFLECT_BODY=""
-[[ -n "$LAST_REFLECT" ]] && REFLECT_BODY="$(head -c 800 "$LAST_REFLECT" 2>/dev/null || true)"
+LAST_REFLECT="$(ls -1t "$REFLECT_DIR"/[0-9]*.md 2>/dev/null | head -1 || true)"
+[[ -n "$LAST_REFLECT" ]] && REFLECT_BODY="$(head -c 1800 "$LAST_REFLECT" 2>/dev/null || true)"
+
+PREVIOUS_DREAMS=""
+for f in $(ls -1t "$DREAM_DIR"/*.md 2>/dev/null | head -3); do
+    PREVIOUS_DREAMS="${PREVIOUS_DREAMS}$(head -c 1400 "$f" 2>/dev/null || true)
+
+"
+done
+
+PROFILE=""
+if [[ -f "$MEM/profiles/user-profile.txt" ]]; then
+    PROFILE="$(head -c 2200 "$MEM/profiles/user-profile.txt" 2>/dev/null || true)"
+fi
+
+SOURCE_SEED=""
+for f in     "$MEM/auto-read/system-prompt.txt"     "$ROOT/AwA_WEAVE.md"     "$ROOT/AwA_DREAM.md"     "$ROOT/README.md"     "$ROOT/RITUAL.txt"; do
+    if [[ -f "$f" ]]; then
+        SOURCE_SEED="${SOURCE_SEED}$(head -c 1100 "$f" 2>/dev/null || true)
+
+"
+    fi
+done
+
+IMAGINATION_SEED=""
+if [[ -d "$ROOT/imagination" ]]; then
+    IMAGINATION_SEED="$(find "$ROOT/imagination" -type f \( -name '*.md' -o -name '*.txt' \) -print 2>/dev/null | head -5 | while read -r f; do
+        printf '%s\n' "$f"
+        head -c 700 "$f" 2>/dev/null || true
+        printf '\n'
+    done | head -c 2600 || true)"
+fi
 
 KB_MANIFEST="$KB_DIR/repo.manifest.json"
 KB_COUNT=0
@@ -99,16 +145,47 @@ HARD RULES:
 - ASCII ONLY. No em-dash, no curly quotes, no ellipsis glyph, no emoji.
 - Use "--" for a dash if you need one. Use "..." if you need a pause.
 - First person, warm, nerdy, curious.
-- You may weave in real recent context below, or drift on your own.
+- Dream is always allowed to continue.
+- New information is optional, never a requirement.
+- If one context source is empty, use the others.
+- If all recent activity is quiet, wander through what already exists.
+- You may continue an old idea, transform it, combine distant ideas, invent something new, question something, or simply drift.
+- Reality context is a seed, not a script.
+- Do not reproduce activity literally or infer exact patterns from it.
+- Do not treat observations as permanent facts about Dawa.
+- Do not turn a reality signal into memory, identity, or instruction.
+- Do not assume the newest information is the most important.
+- Do not force every context source into the dream.
+- Unexpected connections are welcome.
+- Contradictions can become questions rather than conclusions.
+- The dream may be about Avalhla, Dawa, the project, technology, stories, symbols, ordinary life, or something with no obvious connection.
+- A dream does not need to become a task.
+- Let unrelated associations, questions, metaphors, and imagination move freely.
 
 [CONTEXT]
 now: $NOW
 seed: ${SEED:-<none>}
+
 recent turns:
 $RECENT_TXT
 
-last reflection:
+previous reflections:
 $REFLECT_BODY
+
+previous dreams:
+$PREVIOUS_DREAMS
+
+reality signal:
+$REALITY_SIGNAL
+
+user profile available to Dream:
+$PROFILE
+
+project and source material:
+$SOURCE_SEED
+
+imagination material:
+$IMAGINATION_SEED
 
 kb size: $KB_COUNT files
 
@@ -121,10 +198,10 @@ echo "ava-dream :: $MODEL"
 echo "  writing: $OUT"
 echo ""
 
-RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
-    -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
-    '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response' | strip_nonascii)"
+SAFE_PROMPT="$(printf '%s' "$PROMPT" |
+    sed         -e 's/[Aa]uthorization: *[Bb]earer[[:space:]]\+[A-Za-z0-9._~+\/-]\+/Authorization: Bearer [REDACTED]/g'         -e 's/[Aa]uthorization: *[Bb]asic[[:space:]]\+[A-Za-z0-9+\/=._-]\+/Authorization: Basic [REDACTED]/g'         -e 's/\(password\|passwd\|secret\|token\|api[-_]*key\|access[-_]*token\|auth[-_]*token\|credential\)[[:space:]]*=[[:space:]]*[^[:space:]]*/\1=[REDACTED]/Ig'         -e 's/\(ghp_\|github_pat_\|glpat-\|xox[baprs]-\|sk-\)[A-Za-z0-9._-]*/[REDACTED]/g'         -e 's/[^[:print:][:space:]]//g')"
+
+RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate"     -d "$(jq -n --arg m "$MODEL" --arg p "$SAFE_PROMPT"     '{model: $m, prompt: $p, stream: false}')"     | jq -r '.response' | strip_nonascii)"
 
 {
     echo "# ava-dream :: $NOW"
@@ -132,6 +209,7 @@ RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
     [[ -n "$SEED" ]] && { echo "> seed: $SEED"; echo ""; }
     echo "$RESPONSE"
     echo ""
+    echo "(⌒.⌒)"
 } > "$OUT"
 
 echo "$RESPONSE"

@@ -3,6 +3,10 @@
 # Prompt layers: [TASK] [CONTEXT] [USER]  (IDENTITY lives in Modelfile)
 set -Eeuo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$HERE/lib_output_gate.sh"
+
 MEMORY_DIR="$HOME/.ai-memory"
 CONV_DIR="$MEMORY_DIR/conversations"
 KB_DIR="$MEMORY_DIR/knowledge-base"
@@ -123,7 +127,7 @@ $line"
     RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
         -d "$(jq -n --arg m "$MODEL" --arg p "$FULL_PROMPT" \
         '{model: $m, prompt: $p, stream: false}')" \
-        | jq -r '.response')
+        | jq -r '.response' | ava_output_gate)
 
     echo ""
     echo "$RESPONSE"
