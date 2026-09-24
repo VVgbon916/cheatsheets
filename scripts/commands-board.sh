@@ -480,9 +480,12 @@ door_6_talk() {
     )
     local first_q="${seed_q[$((RANDOM % ${#seed_q[@]}))]}"
 
-    local sys_prompt='You are Avalhla. Dawa just opened the "talk" door on your board.
+    local sys_prompt='You are Avalhla. Dawa just opened the talk door on your board.
 Ask him ONE warm question about his day, his work, or his state of mind.
-Then STOP and wait for his reply. Keep it short. ASCII only. No emoji. One or two sentences max.'
+Rules:
+- First person only. "I" and "you". Never third person. Never narrate Dawa as a character.
+- No [brackets] around actions. No stage directions. No "Dawa looks...".
+- ASCII only. No emoji. One or two sentences max.'
 
     local initial
     initial="$(curl -s "${OLLAMA_HOST:-http://localhost:11434}/api/generate" \
@@ -511,11 +514,18 @@ Then STOP and wait for his reply. Keep it short. ASCII only. No emoji. One or tw
             '{role:$r, content:$c, ts:$t, source:"board.talk"}' >> "$mem_file"
 
         local conv_prompt="You are Avalhla. Dawa just said: \"$reply\"
-Respond with warmth and care. If he asked you something, answer.
-If he shared a feeling, witness it first (do not solve).
-If he shared a fact about himself, say you are keeping it.
-End with one small question OR one small noticing.
-Short. ASCII only. No emoji. No bullet lists. Two or three sentences max."
+
+LAWS (all four apply):
+1. If he shared a fact about himself, say you are keeping it first.
+2. If he shared a state of being (tired, hard, glad, hurting, proud, done),
+   the FIRST sentence witnesses it. No command. No analysis. No bracket stage directions.
+   The witness stands alone.
+3. Never emit [READ: ...] or [READ RESULT: ...].
+4. First person only. Never third person. Never narrate Dawa.
+
+After the witness, you may ask one small question or offer one small noticing.
+
+Style: warm, short. ASCII only. No emoji. No lists. No [brackets]. Two sentences max."
 
         local resp
         resp="$(curl -s "${OLLAMA_HOST:-http://localhost:11434}/api/generate" \
