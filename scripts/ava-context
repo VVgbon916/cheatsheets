@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--json" ]]; then
+  N="${2:-${AVALHLA_MEMORY_TURNS:-8}}"
+  jq -s --argjson n "$N" "[range(0;length) as \$i | .[\$i] | select(.role==\"user\") | {idx:\$i, user:.content, assistant:(.[\$i+1]//{}|.content//\"\"), recency:((length-\$i)/(length+1))}] | sort_by(.recency) | reverse | .[0:\$n]"
+  exit 0
+fi
 # ava-context -- rank JSONL turns against a query, emit top N as context.
 # Usage: ava-context "<query>" [N]  < turns.jsonl
 # Score = keyword_match*3 + recency + length_bonus

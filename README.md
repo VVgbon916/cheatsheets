@@ -116,3 +116,29 @@ Make. Break. Learn. Repeat.
 Dawa > AwA < Avalhla
 
 **The mind is not split. The mind is a bridge.**
+
+
+## The Board
+
+`board` opens Avalhla interactive world in the terminal.
+Six doors, live state, random dream quote each time.
+Faces: (^.-) Dawa on the left, Avalhla (⌒.⌒) on the right. Bridge: AvvA.
+
+```
+board           interactive world
+board --quiet   five-line output (pipe-safe)
+board --show    print once, exit
+```
+
+See docs/BOARD.md.
+
+## The Conversation Law
+
+Four laws govern every word she says. See docs/CONVERSATION_LAW.md.
+
+1  Memory Capture    facts about Dawa are kept before they are served
+2  Witness           states of being are met before they are solved
+3  Output Gate       internal reads never become visible speech
+4  Non-Possession    open-space replies end with NOTICE / WHY / DOOR / BOUNDARY
+
+Non-possession is the constitution.

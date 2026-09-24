@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+
+if [[ "${1:-}" == "--list" ]]; then
+  echo "  A V A L H L A  --  every door"
+  echo
+  for f in "$ROOT/scripts"/*; do
+    [[ -x "$f" ]] || continue
+    basename "$f"
+  done
+  exit 0
+fi
 # ava-help -- every door, in Avalhla's voice.
 set -Eeuo pipefail
 
