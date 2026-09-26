@@ -52,7 +52,7 @@ done
 # 3. scripts present + executable
 echo ""
 echo "-- scripts --"
-for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit; do
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick; do
     p="$ROOT/scripts/$s"
     if [[ -x "$p" ]]; then
         ok "script $s"
@@ -64,7 +64,7 @@ done
 # 4. PATH resolution
 echo ""
 echo "-- PATH --"
-for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit; do
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick; do
     if command -v "$s" >/dev/null 2>&1; then
         ok "which $s"
     else
@@ -141,6 +141,47 @@ if "$ROOT/scripts/ava-audit" >/dev/null 2>&1; then
 else
     bad "ava-audit" "banned patterns found"
 fi
+
+# 9. ava-pick self-test
+echo ""
+echo "-- ava-pick --"
+PICK_TMP="$(mktemp -d)"
+trap 'rm -rf "$PICK_TMP"' EXIT INT TERM HUP
+
+cat > "$PICK_TMP/TASKS.txt" <<'EOF'
+- [ ] 5 1 alpha
+- [ ] 4 1 beta
+- [ ] 5 5 gamma
+EOF
+
+PICK_OUT="$(
+    AVA_TASKS_REPO="$PICK_TMP"     AVA_TASKS_FILE="$PICK_TMP/TASKS.txt"     "$ROOT/scripts/ava-pick" -n 3
+)"
+
+if printf '%s
+' "$PICK_OUT" | grep -Eq '^  5 +1 +9 +alpha$'; then
+    ok "ava-pick ranking"
+else
+    bad "ava-pick ranking" "expected alpha score 9"
+fi
+
+if printf '%s
+' "$PICK_OUT" | grep -Eq '^  4 +1 +7 +beta$'; then
+    ok "ava-pick score"
+else
+    bad "ava-pick score" "expected beta score 7"
+fi
+
+AVA_TASKS_REPO="$PICK_TMP" AVA_TASKS_FILE="$PICK_TMP/TASKS.txt" "$ROOT/scripts/ava-pick" --done >/dev/null
+
+if grep -qF -- '- [x] 5 1 alpha' "$PICK_TMP/TASKS.txt"; then
+    ok "ava-pick --done"
+else
+    bad "ava-pick --done" "top task was not marked done"
+fi
+
+rm -rf "$PICK_TMP"
+trap - EXIT INT TERM HUP
 
 # summary
 echo ""

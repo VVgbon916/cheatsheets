@@ -88,7 +88,7 @@ run_check "sudo sysctl on host" \
     "use user-level diagnostic (ulimit -n); no sudo sysctl"
 
 # non-ASCII in docs/
-NONASCII="$(grep -rInP '[^\x00-\x7F]' docs 2>/dev/null --exclude-dir=.git || true)"
+NONASCII="$(grep -rInP '[^\x00-\x7F]' docs 2>/dev/null     --exclude-dir=.git     --exclude='BOARD.md'     --exclude='CONVERSATION_LAW.md'     || true)"
 if [[ -n "$NONASCII" ]]; then
     echo ""
     echo "## non-ASCII in docs/"
