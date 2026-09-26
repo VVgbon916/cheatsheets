@@ -214,11 +214,11 @@ while true; do
     done
 
     # final pass: strip any tags the model still emitted
-    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig')"
+    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig' | ava_output_gate)"
 
     # if final is empty after stripping (model only wanted to read), force one last call
     if [[ -z "$FINAL_CLEAN" ]]; then
-        FINAL_CLEAN="$(call_ollama "$(build_prompt "$line" "$HIST_TXT" "$READ_CTX" 1)" | strip_read_tags)"
+        FINAL_CLEAN="$(call_ollama "$(build_prompt "$line" "$HIST_TXT" "$READ_CTX" 1)" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig' | ava_output_gate)"
     fi
 
     echo ""
