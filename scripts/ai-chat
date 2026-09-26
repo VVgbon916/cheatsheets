@@ -82,7 +82,7 @@ call_ollama() {
     curl -s "$OLLAMA_HOST/api/generate" \
         -d "$(jq -n --arg m "$MODEL" --arg p "$p" \
         '{model: $m, prompt: $p, stream: false}')" \
-        | jq -r '.response' | ava_output_gate
+        | jq -r '.response' | ava_redact
 }
 
 build_prompt() {
@@ -111,19 +111,21 @@ read_enabled: $ENABLE_READ
     p+="
 [CONTEXT]
 "
-    local auto_read; auto_read="$(load_auto_read)"
-    [[ -n "$auto_read" ]] && p+="--- auto-read ---
+    if [[ "$force" != "1" ]]; then
+        local auto_read; auto_read="$(load_auto_read)"
+        [[ -n "$auto_read" ]] && p+="--- auto-read ---
 $auto_read
 
 "
-    [[ -n "$PROFILE" ]]  && p+="--- user profile ---
+        [[ -n "$PROFILE" ]]  && p+="--- user profile ---
 $PROFILE
 
 "
-    [[ -n "$hist_txt" ]] && p+="--- ranked recent turns ---
+        [[ -n "$hist_txt" ]] && p+="--- ranked recent turns ---
 $hist_txt
 
 "
+    fi
     [[ -n "$read_ctx" ]] && p+="--- last read result ---
 $read_ctx
 
