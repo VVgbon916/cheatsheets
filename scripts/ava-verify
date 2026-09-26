@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 # ava-verify -- end-to-end pipeline check. Pure bash, no LLM.
 # Exit 0 = all pass, 1 = any fail.
 set -Eeuo pipefail
@@ -17,9 +18,9 @@ FAIL=0
 ok()   { printf '  [ OK ] %s\n' "$1"; PASS=$(( PASS + 1 )); }
 bad()  { printf '  [FAIL] %s -- %s\n' "$1" "$2"; FAIL=$(( FAIL + 1 )); }
 
-ROOT="$HOME/Avalhla"
+ROOT="$AVA_ROOT"
 REPO="$ROOT"
-MEM="$ROOT/memory"
+MEM="$AVA_MEMORY_DIR"
 
 echo "== ava-verify :: $(date '+%Y-%m-%d %H:%M %Z') =="
 echo ""

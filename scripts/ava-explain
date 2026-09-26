@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 # ava-explain -- explain a shell command, error, or stdin.
 set -Eeuo pipefail
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVA_EXPLAIN_MODEL:-avalhla-review}"
+MODEL="${AVA_EXPLAIN_MODEL:-$AVA_REVIEW_MODEL}"
 MAX_INPUT=8000
 
 case "${1:-}" in
@@ -62,7 +63,7 @@ EOF
 RAW="$(curl -s "$OLLAMA_HOST/api/generate" \
     -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
     '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response')"
+    | jq -r '.response') | ava_output_gate"
 
 # post-process: strip BSD sed -i ''  ->  sed -i
 CLEANED="$(printf '%s' "$RAW" | sed -E "s/sed -i ''/sed -i/g")"

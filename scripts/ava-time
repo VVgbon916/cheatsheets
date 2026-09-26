@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 # ava-time -- daily agenda view.
 #   date/time, timer schedule, git HEAD, top 3 tasks, next reflection, last brief.
 set -Eeuo pipefail
 
 REPO="${AVA_TASKS_REPO:-$HOME/Avalhla}"
 TASKS="${AVA_TASKS_FILE:-$REPO/TASKS.txt}"
-MEM="$HOME/Avalhla/memory"
+MEM="$AVA_MEMORY_DIR"
 REFLECT_DIR="$MEM/reflections"
 
 echo ""

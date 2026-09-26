@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 set -Eeuo pipefail
 
-ROOT="$HOME/Avalhla"
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVA_DREAM_MODEL:-avalhla-chat}"
-MEM="$HOME/Avalhla/memory"
+ROOT="$AVA_ROOT"
+MODEL="${AVA_DREAM_MODEL:-$AVA_CHAT_MODEL}"
+MEM="$AVA_MEMORY_DIR"
 CONV_DIR="$MEM/conversations"
 KB_DIR="$MEM/knowledge-base"
 REFLECT_DIR="$MEM/reflections"
@@ -201,7 +202,7 @@ echo ""
 SAFE_PROMPT="$(printf '%s' "$PROMPT" |
     sed         -e 's/[Aa]uthorization: *[Bb]earer[[:space:]]\+[A-Za-z0-9._~+\/-]\+/Authorization: Bearer [REDACTED]/g'         -e 's/[Aa]uthorization: *[Bb]asic[[:space:]]\+[A-Za-z0-9+\/=._-]\+/Authorization: Basic [REDACTED]/g'         -e 's/\(password\|passwd\|secret\|token\|api[-_]*key\|access[-_]*token\|auth[-_]*token\|credential\)[[:space:]]*=[[:space:]]*[^[:space:]]*/\1=[REDACTED]/Ig'         -e 's/\(ghp_\|github_pat_\|glpat-\|xox[baprs]-\|sk-\)[A-Za-z0-9._-]*/[REDACTED]/g'         -e 's/[^[:print:][:space:]]//g')"
 
-RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate"     -d "$(jq -n --arg m "$MODEL" --arg p "$SAFE_PROMPT"     '{model: $m, prompt: $p, stream: false}')"     | jq -r '.response' | strip_nonascii)"
+RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate"     -d "$(jq -n --arg m "$MODEL" --arg p "$SAFE_PROMPT"     '{model: $m, prompt: $p, stream: false}')"     | jq -r '.response' | strip_nonascii | ava_output_gate)"
 
 {
     echo "# ava-dream :: $NOW"

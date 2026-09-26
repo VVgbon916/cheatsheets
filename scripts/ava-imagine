@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 set -Eeuo pipefail
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVA_IMAGINE_MODEL:-avalhla-chat}"
-ROOT="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/imagination}"
+MODEL="${AVA_IMAGINE_MODEL:-$AVA_CHAT_MODEL}"
+ROOT="${AVA_IMAGINE_ROOT:-$AVA_ROOT/imagination}"
 H="$ROOT/HUMAN"
 A="$ROOT/AI"
 
@@ -198,7 +199,7 @@ EOF
         BODY="$(curl -s "$OLLAMA_HOST/api/generate" \
             -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
             '{model: $m, prompt: $p, stream: false}')" \
-            | jq -r '.response' \
+            | jq -r '.response' | ava_output_gate \
             | sanitize \
             | grep -vE '^(TITLE|COLOR|ART):' \
             | grep -vE '^```' \

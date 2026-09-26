@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 # ava-doc -- auto-generate a README for a script.
 # Usage: ava-doc scripts/foo.sh              (stdout)
 #        ava-doc scripts/foo.sh > foo.md    (write to file)
 #        ava-doc scripts/foo.sh -o foo.md   (explicit output)
 set -Eeuo pipefail
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVA_DOC_MODEL:-avalhla-review}"
+MODEL="${AVA_DOC_MODEL:-$AVA_REVIEW_MODEL}"
 MAX_BYTES=15000
 
 FILE=""
@@ -71,7 +72,7 @@ EOF
 RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
     -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
     '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response')"
+    | jq -r '.response') | ava_output_gate"
 
 if [[ -n "$OUT" ]]; then
     printf '%s\n' "$RESPONSE" > "$OUT"

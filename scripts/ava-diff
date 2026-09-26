@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 # ava-diff -- show what changed since last review, ask avalhla-review.
 # Usage: ava-diff <file> [--since <ref>]
 #        ava-diff <file> --no-cache
@@ -7,8 +9,7 @@ set -Eeuo pipefail
 
 REPO="${AVA_DIFF_REPO:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
 CACHE_DIR="$HOME/.ai-memory/reviewed"
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="avalhla-review"
+MODEL="${AVA_REVIEW_MODEL}"
 SINCE="HEAD~1"
 USE_CACHE=1
 MAX_BYTES=40000
@@ -98,7 +99,7 @@ $DIFF"
 RESPONSE="$(curl -s "$OLLAMA_HOST/api/generate" \
     -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
     '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response')"
+    | jq -r '.response') | ava_output_gate"
 
 echo "$RESPONSE"
 echo ""

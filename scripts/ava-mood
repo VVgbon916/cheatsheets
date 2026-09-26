@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 # ava-mood -- Avalhla's present-time mood/color state.
 #   ava-mood                show current effective mood
 #   ava-mood auto           back to time-of-day auto (default)
@@ -10,7 +11,7 @@
 #   ava-mood json           dump raw state
 set -Eeuo pipefail
 
-STATE_DIR="${AVA_MOOD_DIR:-$HOME/Avalhla/memory/state}"
+STATE_DIR="${AVA_MOOD_DIR:-$AVA_MEMORY_DIR/state}"
 STATE="$STATE_DIR/mood.json"
 IMAGINE_HUMAN="${AVA_IMAGINE_ROOT:-$HOME/Avalhla/imagination}/HUMAN"
 

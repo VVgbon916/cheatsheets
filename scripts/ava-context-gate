@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 set -Eeuo pipefail
 
-ROOT="$HOME/Avalhla"
-SIGNAL="$ROOT/memory/reality/latest.md"
+ROOT="$AVA_ROOT"
+SIGNAL="$AVA_REALITY_DIR/latest.md"
 MAX_BYTES=6000
 
 [[ -f "$SIGNAL" ]] || exit 0

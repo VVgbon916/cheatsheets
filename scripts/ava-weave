@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 set -Eeuo pipefail
 
-ROOT="$HOME/Avalhla"
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVA_WEAVE_MODEL:-avalhla-chat}"
+ROOT="$AVA_ROOT"
+MODEL="${AVA_WEAVE_MODEL:-$AVA_CHAT_MODEL}"
 
-WEAVE_DIR="$ROOT/memory/reflections/weave"
+WEAVE_DIR="$AVA_REFLECTIONS_DIR/weave"
 mkdir -p "$WEAVE_DIR"
 
 case "${1:-}" in
@@ -54,7 +55,7 @@ esac
 REALITY="$("$ROOT/scripts/ava-context-gate" 2>/dev/null | head -c 5000 || true)"
 
 RECENT_CONTEXT="$(
-    find "$ROOT/memory/conversations" -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null |
+    find "$AVA_CONVERSATIONS_DIR" -type f -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null |
         sort -nr |
         head -n1 |
         cut -d' ' -f2- |
@@ -65,7 +66,7 @@ RECENT_CONTEXT="$(
 )"
 
 LATEST_DREAM="$(
-    find "$ROOT/memory/reflections/dreams" -maxdepth 1 -type f -name '*.md' \
+    find "$AVA_REFLECTIONS_DIR/dreams" -maxdepth 1 -type f -name '*.md' \
         -printf '%T@ %p\n' 2>/dev/null |
         sort -nr |
         head -n1 |
@@ -74,7 +75,7 @@ LATEST_DREAM="$(
 )"
 
 LATEST_REFLECTION="$(
-    find "$ROOT/memory/reflections" -maxdepth 1 -type f -name '*.md' \
+    find "$AVA_REFLECTIONS_DIR" -maxdepth 1 -type f -name '*.md' \
         -printf '%T@ %p\n' 2>/dev/null |
         sort -nr |
         head -n1 |
@@ -278,7 +279,7 @@ RESPONSE="$(
                     temperature: 0.7
                 }
             }')" |
-        jq -r '.response // empty'
+        jq -r '.response // empty' | ava_output_gate
 )"
 
 RESPONSE="$(printf '%s\n' "$RESPONSE" | head -c 5000)"

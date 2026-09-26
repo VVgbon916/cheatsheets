@@ -5,19 +5,19 @@ set -Eeuo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
+source "$HERE/lib_runtime.sh"
 source "$HERE/lib_output_gate.sh"
 
-MEMORY_DIR="$HOME/.ai-memory"
-CONV_DIR="$MEMORY_DIR/conversations"
-KB_DIR="$MEMORY_DIR/knowledge-base"
-PROFILE_DIR="$MEMORY_DIR/profiles"
+MEMORY_DIR="$AVA_MEMORY_DIR"
+CONV_DIR="$AVA_CONVERSATIONS_DIR"
+KB_DIR="$AVA_KNOWLEDGE_DIR"
+PROFILE_DIR="$AVA_PROFILES_DIR"
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVALHLA_MODEL:-avalhla}"
+MODEL="${AVA_MODEL}"
 SESSION_FILE="$CONV_DIR/$(date +%Y-%m-%d).jsonl"
 PROFILE_FILE="$PROFILE_DIR/user-profile.txt"
-AUTO_READ_DIR="$MEMORY_DIR/auto-read"
-RANK_BIN="$HOME/Avalhla/scripts/ava-context"
+AUTO_READ_DIR="$AVA_AUTOREAD_DIR"
+RANK_BIN="$AVA_SCRIPTS_DIR/ava-context"
 MEM_TURNS="${AVALHLA_MEMORY_TURNS:-8}"
 
 load_auto_read() {

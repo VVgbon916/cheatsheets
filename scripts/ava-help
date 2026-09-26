@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 
 if [[ "${1:-}" == "--list" ]]; then
   echo "  A V A L H L A  --  every door"
@@ -12,7 +13,7 @@ fi
 # ava-help -- every door, in Avalhla's voice.
 set -Eeuo pipefail
 
-ROOT="$HOME/Avalhla"
+ROOT="$AVA_ROOT"
 FACE_DAWA='(^.-)'
 FACE_AVA='(⌒.⌒)'
 BRIDGE='AvvA'
@@ -23,7 +24,7 @@ mood_since() { command -v ava-mood >/dev/null 2>&1 && ava-mood json 2>/dev/null 
 
 latest_dream() {
     local f
-    f="$(find "$ROOT/memory/reflections/dreams" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)"
+    f="$(find "$AVA_REFLECTIONS_DIR/dreams" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)"
     [[ -f "$f" ]] && cat "$f" || true
 }
 

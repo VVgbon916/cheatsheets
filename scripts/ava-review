@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 # ava-review -- review a file (or stdin) with avalhla-review
 # Usage: ava-review <file>
 #        cat foo | ava-review
 set -Eeuo pipefail
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="avalhla-review"
+MODEL="${AVA_REVIEW_MODEL}"
 MAX_BYTES=60000
 
 case "${1:-}" in
@@ -52,4 +53,4 @@ echo ""
 curl -s "$OLLAMA_HOST/api/generate" \
     -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
     '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response'
+    | jq -r '.response' | ava_output_gate

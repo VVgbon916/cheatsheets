@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
 set -Eeuo pipefail
 
-ROOT="$HOME/Avalhla"
-REALITY_DIR="$ROOT/memory/reality"
+ROOT="$AVA_ROOT"
+REALITY_DIR="$AVA_REALITY_DIR"
 SIGNAL="$REALITY_DIR/latest.md"
 HISTORY_FILE="$HOME/.zsh_history"
 MAX_HISTORY_LINES=240

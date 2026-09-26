@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib_runtime.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib_output_gate.sh"
 # ai-remember — she reflects on recent sessions, saves to reflections/
 set -Eeuo pipefail
 
-MODEL="${AVALHLA_MODEL:-avalhla}"
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MEMORY_DIR="$HOME/.ai-memory"
+MODEL="${AVA_MODEL}"
+MEMORY_DIR="$AVA_MEMORY_DIR"
 CONV_DIR="$MEMORY_DIR/conversations"
 PROFILE="$MEMORY_DIR/profiles/user-profile.txt"
 REFLECT_DIR="$MEMORY_DIR/reflections"
@@ -33,7 +34,7 @@ In 3 concise bullet points with your cute, witty bestie voice:
 RESPONSE=$(curl -s "$OLLAMA_HOST/api/generate" \
     -d "$(jq -n --arg m "$MODEL" --arg p "$PROMPT" \
     '{model: $m, prompt: $p, stream: false}')" \
-    | jq -r '.response')
+    | jq -r '.response' | ava_output_gate)
 
 echo ""
 echo "$RESPONSE"
