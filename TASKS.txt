@@ -15,7 +15,7 @@
 -- ACTIVE --
 
 - [x] 5 1 add ava-pick self-test to ava-verify
-- [ ] 4 2 wire ava-undo into ava-verify
+- [x] 4 2 wire ava-undo into ava-verify
 - [ ] 4 1 update README with ava-* commands
 - [ ] 3 3 add ava-time daily agenda
 - [ ] 3 2 add ava-dream idle reflection

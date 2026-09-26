@@ -52,7 +52,7 @@ done
 # 3. scripts present + executable
 echo ""
 echo "-- scripts --"
-for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick; do
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick ava-undo; do
     p="$ROOT/scripts/$s"
     if [[ -x "$p" ]]; then
         ok "script $s"
@@ -64,7 +64,7 @@ done
 # 4. PATH resolution
 echo ""
 echo "-- PATH --"
-for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick; do
+for s in ai-chat ava-context ava-review ava-search ava-learn-repo ava-brief ava-diff ava-explain ava-doc ava-audit ava-pick ava-undo; do
     if command -v "$s" >/dev/null 2>&1; then
         ok "which $s"
     else
@@ -181,6 +181,62 @@ else
 fi
 
 rm -rf "$PICK_TMP"
+trap - EXIT INT TERM HUP
+
+# 10. ava-undo self-test
+echo ""
+echo "-- ava-undo --"
+UNDO_TMP="$(mktemp -d)"
+trap 'rm -rf "$UNDO_TMP"' EXIT INT TERM HUP
+
+(
+    cd "$UNDO_TMP"
+
+    git init -q
+    git config user.name "Avalhla Verify"
+    git config user.email "verify@example.invalid"
+
+    printf 'original\n' > sample.txt
+    git add sample.txt
+    git commit -q -m "fixture base"
+
+    printf 'ai change\n' > sample.txt
+    git add sample.txt
+    git commit -q --author="Avalhla <avalhla@example.invalid>" -m "fixture AI change"
+
+    BEFORE="$(git rev-parse HEAD)"
+
+    PREVIEW="$("$ROOT/scripts/ava-undo")"
+
+    if [[ "$PREVIEW" == *"would revert:"* && "$PREVIEW" == *"fixture AI change"* ]]; then
+        ok "ava-undo preview"
+    else
+        bad "ava-undo preview" "expected last AI commit preview"
+    fi
+
+    [[ "$(git rev-parse HEAD)" == "$BEFORE" ]] &&
+        ok "ava-undo preview is non-mutating" ||
+        bad "ava-undo preview is non-mutating" "HEAD changed"
+
+    if "$ROOT/scripts/ava-undo" --go >/dev/null; then
+        ok "ava-undo --go"
+    else
+        bad "ava-undo --go" "git revert failed"
+    fi
+
+    if grep -qF 'original' sample.txt && ! grep -qF 'ai change' sample.txt; then
+        ok "ava-undo restored content"
+    else
+        bad "ava-undo restored content" "fixture file was not restored"
+    fi
+
+    PARENT_COUNT="$(git rev-list --count HEAD)"
+    [[ "$PARENT_COUNT" -eq 3 ]] &&
+        ok "ava-undo created revert commit" ||
+        bad "ava-undo created revert commit" "expected 3 commits, got $PARENT_COUNT"
+)
+
+rm -rf "$UNDO_TMP"
 trap - EXIT INT TERM HUP
 
 # summary
