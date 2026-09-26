@@ -212,7 +212,7 @@ while true; do
     done
 
     # final pass: strip any tags the model still emitted
-    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig')" 
+    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig')"
 
     # if final is empty after stripping (model only wanted to read), force one last call
     if [[ -z "$FINAL_CLEAN" ]]; then
