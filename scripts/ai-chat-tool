@@ -3,9 +3,12 @@
 # Prompt layers: [TASK] [CONTEXT] [USER]  (IDENTITY lives in Modelfile)
 set -Eeuo pipefail
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
-MODEL="${AVALHLA_MODEL:-avalhla}"
-READ_BIN="$HOME/Avalhla/scripts/ai-read"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/lib_runtime.sh"
+source "$HERE/lib_output_gate.sh"
+
+MODEL="${AVALHLA_MODEL:-${AVA_MODEL:-avalhla}}"
+READ_BIN="$AVA_SCRIPTS_DIR/ai-read"
 MAX_TURNS=6
 
 if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
@@ -88,11 +91,13 @@ $line"
             continue
         fi
 
+        FINAL_CLEAN="$(printf '%s' "$RESPONSE" | ava_output_gate)"
+
         echo ""
-        echo "$RESPONSE"
+        echo "$FINAL_CLEAN"
         echo ""
         HISTORY="${HISTORY}user: ${line}
-assistant: ${RESPONSE}
+assistant: ${FINAL_CLEAN}
 
 "
         LAST_READ_CONTENT=""
