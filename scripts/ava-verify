@@ -239,6 +239,76 @@ trap 'rm -rf "$UNDO_TMP"' EXIT INT TERM HUP
 rm -rf "$UNDO_TMP"
 trap - EXIT INT TERM HUP
 
+# 11. Avalhla safety boundary
+echo ""
+echo "-- safety --"
+
+if "$ROOT/scripts/ava-safety" --self-test >/dev/null 2>&1; then
+    ok "ava-safety capability policy"
+else
+    bad "ava-safety capability policy" "self-test failed"
+fi
+
+SAFE_TMP="$(mktemp -d)"
+trap 'rm -rf "$SAFE_TMP"' EXIT INT TERM HUP
+
+printf 'ordinary\n' > "$SAFE_TMP/ordinary.txt"
+printf 'SECRET=do-not-read\n' > "$SAFE_TMP/.env"
+printf 'PRIVATE KEY\n' > "$SAFE_TMP/id_ed25519"
+
+if (
+    source "$ROOT/scripts/lib_runtime.sh"
+    source "$ROOT/scripts/lib_safety.sh"
+    ! ava_safety_sensitive "$SAFE_TMP/ordinary.txt"
+); then
+    ok "safety ordinary file allowed"
+else
+    bad "safety ordinary file allowed" "ordinary file was classified sensitive"
+fi
+
+if (
+    source "$ROOT/scripts/lib_runtime.sh"
+    source "$ROOT/scripts/lib_safety.sh"
+    ava_safety_sensitive "$SAFE_TMP/.env"
+); then
+    ok "safety .env denied"
+else
+    bad "safety .env denied" "secret file was not denied"
+fi
+
+if (
+    source "$ROOT/scripts/lib_runtime.sh"
+    source "$ROOT/scripts/lib_safety.sh"
+    ava_safety_sensitive "$SAFE_TMP/id_ed25519"
+); then
+    ok "safety private key denied"
+else
+    bad "safety private key denied" "private key was not denied"
+fi
+
+if (
+    source "$ROOT/scripts/lib_runtime.sh"
+    source "$ROOT/scripts/lib_safety.sh"
+    ! ava_safety_capability shell
+); then
+    ok "safety arbitrary shell denied"
+else
+    bad "safety arbitrary shell denied" "shell capability is enabled"
+fi
+
+if (
+    source "$ROOT/scripts/lib_runtime.sh"
+    source "$ROOT/scripts/lib_safety.sh"
+    ! ava_safety_capability system-mutation
+); then
+    ok "safety system mutation denied"
+else
+    bad "safety system mutation denied" "system mutation capability is enabled"
+fi
+
+rm -rf "$SAFE_TMP"
+trap - EXIT INT TERM HUP
+
 # summary
 echo ""
 echo "== summary =="

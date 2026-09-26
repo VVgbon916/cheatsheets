@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# ava-safety -- deterministic Avalhla security boundary inspector.
+set -Eeuo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source "$HERE/lib_runtime.sh"
+source "$HERE/lib_safety.sh"
+
+case "${1:-}" in
+    --self-test)
+        ava_safety_self_test
+        ;;
+
+    --json)
+        jq -n \
+            --arg version "1" \
+            --arg read "bounded" \
+            --arg inference "allowed" \
+            --arg memory_write "bounded" \
+            --arg local_api "allowed" \
+            --arg external_network "DENIED" \
+            --arg shell "DENIED" \
+            --arg system_mutation "DENIED" \
+            --arg external_side_effect "DENIED" \
+            '{
+                version:$version,
+                capabilities:{
+                    read:$read,
+                    inference:$inference,
+                    memory_write:$memory_write,
+                    local_api:$local_api,
+                    external_network:$external_network,
+                    shell:$shell,
+                    system_mutation:$system_mutation,
+                    external_side_effect:$external_side_effect
+                }
+            }'
+        ;;
+
+    -h|--help)
+        cat <<'HELP'
+usage:
+  ava-safety
+  ava-safety --self-test
+  ava-safety --json
+
+Avalhla safety boundary:
+
+  read                  bounded
+  inference             allowed
+  memory-write          bounded
+  local-api             allowed
+
+  external-network      DENIED
+  shell                 DENIED
+  system-mutation       DENIED
+  external-side-effect  DENIED
+HELP
+        ;;
+
+    *)
+        cat <<'REPORT'
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         A V A L H L A                                      ║
+║                         S A F E T Y                                        ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║   READ                  BOUNDED                                            ║
+║   INFERENCE             ALLOWED                                            ║
+║   MEMORY WRITE          BOUNDED                                            ║
+║   LOCAL API             ALLOWED                                            ║
+║                                                                            ║
+║   EXTERNAL NETWORK      DENIED                                             ║
+║   ARBITRARY SHELL       DENIED                                             ║
+║   SYSTEM MUTATION       DENIED                                             ║
+║   EXTERNAL SIDE EFFECT  DENIED                                             ║
+║                                                                            ║
+║   THE MODEL DOES NOT AUTHORIZE ITSELF.                                     ║
+║                                                                            ║
+║                         Dawa > AvvA < Avalhla                              ║
+║                                (^.-)                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+REPORT
+        ;;
+esac

@@ -8,6 +8,11 @@
 
 set -Eeuo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/lib_runtime.sh"
+source "$HERE/lib_safety.sh"
+source "$HERE/lib_redact.sh"
+
 WHITELIST_FILE="$HOME/.ai-memory/read-paths.txt"
 MAX_FILE_BYTES=50000
 
@@ -46,6 +51,8 @@ do_read_file() {
         exit 1
     fi
 
+    ava_safety_assert_readable "$path" || exit 1
+
     if [[ -d "$path" ]]; then
         echo "(directory, listing contents)"
         ls -la "$path"
@@ -58,7 +65,7 @@ do_read_file() {
     if [[ "$size" -gt "$MAX_FILE_BYTES" ]]; then
         echo "(file too big: ${size} bytes, max ${MAX_FILE_BYTES})"
         echo "(showing first 200 lines)"
-        head -n 200 "$path"
+        head -n 200 "$path" | ava_redact
         return
     fi
 
@@ -67,13 +74,14 @@ do_read_file() {
         return
     fi
 
-    cat "$path"
+    cat "$path" | ava_redact
 }
 
 # ── Dir listing ──
 do_ls() {
     local dir="$1"
     [[ -d "$dir" ]] || { echo "X Not a directory: $dir"; exit 1; }
+    ava_safety_assert_readable "$dir" || exit 1
     ls -la "$dir"
 }
 
@@ -82,10 +90,14 @@ do_grep() {
     local pattern="$1"
     local dir="$2"
     [[ -d "$dir" ]] || { echo "X Not a directory: $dir"; exit 1; }
+    ava_safety_assert_readable "$dir" || exit 1
     grep -rn --include="*.md" --include="*.txt" --include="*.sh" --include="*.toml" \
         --include="*.conf" --include="*.yaml" --include="*.yml" --include="*.json" \
         --include="*.Modelfile" --include="Modelfile" \
-        -e "$pattern" "$dir" 2>/dev/null | head -50 || echo "(no matches)"
+        -e "$pattern" "$dir" 2>/dev/null |
+        head -50 |
+        ava_redact ||
+        echo "(no matches)"
 }
 
 # ── Tree ──

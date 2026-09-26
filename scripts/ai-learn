@@ -2,7 +2,11 @@
 # ai-learn — index a directory or file into Avalhla's knowledge base
 set -Eeuo pipefail
 
-MEMORY_DIR="$HOME/.ai-memory"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/lib_runtime.sh"
+source "$HERE/lib_safety.sh"
+
+MEMORY_DIR="$AVA_MEMORY_DIR"
 KB_DIR="$MEMORY_DIR/knowledge-base"
 INDEX_FILE="$KB_DIR/_index.json"
 
@@ -22,9 +26,11 @@ fi
 TARGET="$1"
 
 if [[ ! -e "$TARGET" ]]; then
-    echo "✗ Path not found: $TARGET"
+    echo "X Path not found: $TARGET"
     exit 1
 fi
+
+ava_safety_assert_learn_source "$TARGET" || exit 1
 
 # ── Init index if missing ──
 if [[ ! -f "$INDEX_FILE" ]]; then
@@ -36,6 +42,12 @@ TOTAL_BYTES=0
 
 index_file() {
     local src="$1"
+
+    if ! ava_safety_assert_learn_file "$src"; then
+        echo "  skip (sensitive): $src"
+        return
+    fi
+
     local rel="${src#$HOME/}"
     local safe_name
     safe_name=$(echo "$rel" | tr '/' '_' | tr -c '[:alnum:]_.-' '_')
@@ -54,7 +66,8 @@ index_file() {
         return
     fi
 
-    cp "$src" "$dest"
+    ava_safety_assert_memory_write "$dest" || return 1
+    cp -- "$src" "$dest"
 
     local hash
     hash=$(sha256sum "$src" | awk '{print $1}')
@@ -68,8 +81,10 @@ index_file() {
         --arg ts "$(date -Iseconds)" \
         '{path: $path, dest: $dest, hash: $hash, size: $size, indexed: $ts}')
 
+    ava_safety_assert_memory_write "${INDEX_FILE}.tmp" || return 1
     jq --arg p "$rel" --argjson e "$entry" '.[$p] = $e' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
-    mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
+    ava_safety_assert_memory_write "$INDEX_FILE" || return 1
+    mv -- "${INDEX_FILE}.tmp" "$INDEX_FILE"
 
     echo "  ✓ $rel ($size bytes)"
     TOTAL_FILES=$((TOTAL_FILES + 1))

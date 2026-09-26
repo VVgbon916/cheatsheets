@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
+
+HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=scripts/lib_runtime.sh
+source "$HERE/lib_runtime.sh"
+# shellcheck source=scripts/lib_safety.sh
+source "$HERE/lib_safety.sh"
+
 # ava-autoread -- what she reads every time.
 set -Eeuo pipefail
 
-BOX="$HOME/.ai-memory/auto-read"
+BOX="$AVA_AUTOREAD_DIR"
 mkdir -p "$BOX"
 
 list_json() {
@@ -81,7 +88,20 @@ EOT
         exit 0 ;;
     *)
         [[ -f "$1" ]] || { echo "file not found: $1" >&2; exit 1; }
-        cp "$1" "$BOX/$(basename "$1")"
+        ava_safety_assert_ingest_source "$1" || exit 1
+
+        size="$(stat -c '%s' "$1" 2>/dev/null || echo 0)"
+        if (( size > 65536 )); then
+            echo "X safety: auto-read file exceeds 65536 bytes" >&2
+            exit 1
+        fi
+
+        dest="$BOX/$(basename "$1")"
+        ava_safety_assert_memory_write "$dest" || exit 1
+
+        cp -- "$1" "$dest"
+        ava_safety_audit "ingest" "commit" "$dest"
+
         echo "added: $(basename "$1")"
         ;;
 esac
