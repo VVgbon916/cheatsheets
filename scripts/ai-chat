@@ -11,6 +11,7 @@ source "$HERE/lib_output_gate.sh"
 
 MEMORY_DIR="$AVA_MEMORY_DIR"
 CONV_DIR="$AVA_CONVERSATIONS_DIR"
+SYSTEM_STATUS_BIN="$AVA_SCRIPTS_DIR/ai-system-status"
 PROFILE_DIR="$AVA_PROFILES_DIR"
 AUTO_READ_DIR="$AVA_AUTOREAD_DIR"
 
@@ -95,10 +96,13 @@ read_enabled: $ENABLE_READ
       Output plain text only. Do not emit [READ: ...] or [END READ].
 "
     elif (( ENABLE_READ == 1 )); then
+        p+="For current local system questions, output exactly ONE line: [SYSTEM:STATUS]
+      Never guess current system state from old context or stale logs.
+"
         p+="goal: answer the user. If you need file content you do not have, output exactly ONE line: [READ: <arg>]
       Allowed: [READ: path]  [READ: --ls dir]  [READ: --grep pattern]
       If CONTEXT already has the content, answer in plain text. Never invent file contents.
-      Do not emit [END READ]. Emit at most one [READ: ...] per reply.
+      Do not emit [END READ]. Emit at most one read/system request per reply.
 "
     else
         p+="goal: answer the user. Use CONTEXT if present. Do NOT emit [READ: ...] tags.
@@ -151,11 +155,13 @@ while true; do
     READ_CTX=""
     SEEN=""
     READS=0
+    SYSTEM_STATUS_USED=0
     FINAL=""
 
     while :; do
         FORCE=0
         if (( READS >= MAX_READS_PER_TURN )); then FORCE=1; fi
+        if (( SYSTEM_STATUS_USED == 1 )); then FORCE=1; fi
 
         PROMPT="$(build_prompt "$line" "$HIST_TXT" "$READ_CTX" "$FORCE")"
         RESPONSE="$(call_ollama "$PROMPT")"
@@ -163,6 +169,18 @@ while true; do
         if (( ENABLE_READ == 0 )); then
             FINAL="$RESPONSE"
             break
+        fi
+
+        if printf '%s' "$RESPONSE" | grep -Eqi '\[SYSTEM:STATUS\]'; then
+            echo "  [ava system status]"
+            if [ -x "$SYSTEM_STATUS_BIN" ]; then
+                READ_CTX="$("$SYSTEM_STATUS_BIN" 2>&1 || echo "X system status failed")"
+                READ_CTX="$(printf '%s' "$READ_CTX" | head -c 8000)"
+            else
+                READ_CTX="X system status bridge unavailable"
+            fi
+            SYSTEM_STATUS_USED=1
+            continue
         fi
 
         if ! echo "$RESPONSE" | grep -q '\[READ: '; then
@@ -194,7 +212,7 @@ while true; do
     done
 
     # final pass: strip any tags the model still emitted
-    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags)"
+    FINAL_CLEAN="$(printf '%s' "$FINAL" | strip_read_tags | sed -E 's/\[SYSTEM:STATUS\]//Ig')" 
 
     # if final is empty after stripping (model only wanted to read), force one last call
     if [[ -z "$FINAL_CLEAN" ]]; then
