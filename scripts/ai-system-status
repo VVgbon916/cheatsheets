@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export LC_ALL=C
+
+printf '=== AVALHLA SYSTEM STATUS ===\n'
+printf 'timestamp=%s\n' "$(date -Iseconds)"
+printf 'hostname=%s\n' "$(hostname)"
+
+if [ -r /etc/os-release ]; then
+    os="$(
+        awk -F= '
+            $1=="PRETTY_NAME" {
+                gsub(/^"|"$/, "", $2)
+                print $2
+                exit
+            }
+        ' /etc/os-release
+    )"
+    printf 'os=%s\n' "$os"
+fi
+
+printf 'kernel=%s\n' "$(uname -r)"
+
+printf '\n=== BAZZITE DEPLOYMENT ===\n'
+
+if command -v rpm-ostree >/dev/null 2>&1; then
+    if rpm-ostree status --json > /tmp/ava-rpm-ostree-status.json 2>/dev/null; then
+        jq -c '
+        {
+          deployments: [
+            .deployments[] |
+            {
+              booted: (.booted // false),
+              staged: (.staged // false),
+              osname: (.osname // null),
+              version: (.version // null),
+              checksum: (.checksum // null),
+              timestamp: (.timestamp // null)
+            }
+          ]
+        }
+        ' /tmp/ava-rpm-ostree-status.json
+        rm -f /tmp/ava-rpm-ostree-status.json
+    else
+        echo 'rpm_ostree_status=unavailable'
+    fi
+else
+    echo 'rpm_ostree=missing'
+fi
+
+printf '\n=== USER SERVICES ===\n'
+
+for unit in ollama.service ava-reflect.timer; do
+    if systemctl --user is-active "$unit" >/dev/null 2>&1; then
+        printf '%s=active\n' "$unit"
+    else
+        printf '%s=inactive\n' "$unit"
+    fi
+done
+
+printf '\n=== OLLAMA API ===\n'
+
+if command -v curl >/dev/null 2>&1 &&
+   curl -fsS --max-time 5 \
+      "${OLLAMA_HOST:-http://localhost:11434}/api/tags" \
+      >/tmp/ava-ollama-tags.json 2>/dev/null
+then
+    printf 'api=up\n'
+
+    if command -v jq >/dev/null 2>&1; then
+        printf 'models='
+        jq -r '.models | length' /tmp/ava-ollama-tags.json 2>/dev/null || printf 'unknown'
+        printf '\n'
+    fi
+
+    rm -f /tmp/ava-ollama-tags.json
+else
+    printf 'api=down\n'
+fi
+
+printf '\n=== NOTE ===\n'
+printf '%s\n' \
+  'This is current local evidence only.' \
+  'A deployment listing does not by itself prove that a newer remote update exists.' \
+  'No update, install, reboot, or other mutating operation was performed.'
